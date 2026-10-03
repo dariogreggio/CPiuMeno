@@ -1,0 +1,953 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Italian (Italy) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ITA)
+#ifdef _WIN32
+LANGUAGE LANG_ITALIAN, SUBLANG_ITALIAN
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ITA)\r\n"
+    "#ifdef _WIN32\r\n"
+    "LANGUAGE 16, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#endif\r\n"
+    "#include ""res\\cpiumeno.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""l.ita\\afxres.rc""          // Standard components\r\n"
+    "#include ""l.ita\\afxprint.rc""        // printing/print preview resources\r\n"
+    "#endif\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON    DISCARDABLE     "res\\cpiumeno.ico"
+IDR_CTYPE               ICON    DISCARDABLE     "res\\cpiumenoDoc.ico"
+IDR_CTYPE2              ICON    DISCARDABLE     "res\\icon1.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDR_MAINFRAME           BITMAP  MOVEABLE PURE   "res\\Toolbar.bmp"
+IDB_PROJECTREE          BITMAP  DISCARDABLE     "res\\bitmap1.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Toolbar
+//
+
+IDR_MAINFRAME TOOLBAR DISCARDABLE  20, 20
+BEGIN
+    BUTTON      ID_FILE_NEW
+    BUTTON      ID_FILE_OPEN
+    BUTTON      ID_FILE_SAVE
+    BUTTON      ID_FILE_SALVATUTTO
+    BUTTON      ID_FILE_PRINT
+    SEPARATOR
+    BUTTON      ID_EDIT_CUT
+    BUTTON      ID_EDIT_COPY
+    BUTTON      ID_EDIT_PASTE
+    SEPARATOR
+    BUTTON      ID_COMPILA_FILE
+    BUTTON      ID_COMPILA_TUTTO
+    SEPARATOR
+    BUTTON      ID_BUTTON32781
+    SEPARATOR
+    BUTTON      ID_STRUMENTI_OPZIONI
+    SEPARATOR
+    BUTTON      ID_APP_ABOUT
+    BUTTON      ID_CONTEXT_HELP
+    SEPARATOR
+    BUTTON      IDC_STATIC_SEARCH_LABEL
+    BUTTON      IDC_COMBO_SEARCH
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MAINFRAME MENU PRELOAD DISCARDABLE 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Nuovo\tCtrl+N",              ID_FILE_NEW
+        MENUITEM "&Apri...\tCtrl+A",            ID_FILE_OPEN
+        MENUITEM "Nuovo progetto",              ID_FILE_NUOVOPROGETTO
+        MENUITEM "Ap&ri progetto...",           ID_FILE_APRIPROGETTO
+        MENUITEM "&Salva progetto",             ID_FILE_SALVAPROGETTO
+        MENUITEM "Salva progetto con nome...",  ID_FILE_SALVAPROGETTOCONNOME
+        MENUITEM "C&hiudi progetto",            ID_FILE_CHIUDIPROGETTO
+        MENUITEM SEPARATOR
+        MENUITEM "Imposta s&tampante...",       ID_FILE_PRINT_SETUP
+        MENUITEM SEPARATOR
+        POPUP "File recenti"
+        BEGIN
+            MENUITEM "Ultimo file usato",           ID_FILE_MRU_FILE1
+            , GRAYED
+        END
+        POPUP "Progetti recenti"
+        BEGIN
+            MENUITEM "Ultimo progetto usato",       ID_PROJECT_MRU_FIRST
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "&Esci",                       ID_APP_EXIT
+    END
+    POPUP "&Progetto"
+    BEGIN
+        MENUITEM "&Compila\tCtrl+F7",           ID_COMPILA_TUTTO
+        MENUITEM "Compila tutto\tCtrl+F10",     ID_COMPILA_COMPILATUTTO
+        MENUITEM SEPARATOR
+        MENUITEM "&Opzioni...\tAlt+F7",         ID_STRUMENTI_OPZIONI
+        MENUITEM "&Impostazioni...",            ID_COMPILA_IMPOSTAZIONI
+        MENUITEM "&Aggiungi file...",           ID_PROGETTO_AGGIUNGIFILE
+    END
+    POPUP "&Visualizza"
+    BEGIN
+        MENUITEM "Barra degli st&rumenti",      ID_VIEW_TOOLBAR
+        MENUITEM "Barra di st&ato",             ID_VIEW_STATUS_BAR
+        MENUITEM "Finestra progetto",           ID_VISUALIZZA_FINESTRAPROGETTO
+
+        MENUITEM "Finestra di output",          ID_VISUALIZZA_FINESTRADIOUTPUT
+
+    END
+    POPUP "&?"
+    BEGIN
+        MENUITEM "&Argomenti della Guida",      ID_HELP_FINDER
+        MENUITEM SEPARATOR
+        MENUITEM "Infor&mazioni su CPiuMeno...", ID_APP_ABOUT
+    END
+END
+
+IDR_CTYPE MENU PRELOAD DISCARDABLE 
+BEGIN
+    POPUP "&File"
+    BEGIN
+        MENUITEM "&Nuovo\tCtrl+N",              ID_FILE_NEW
+        MENUITEM "&Apri...\tCtrl+A",            ID_FILE_OPEN
+        MENUITEM "&Chiudi",                     ID_FILE_CLOSE
+        MENUITEM "&Salva\tCtrl+S",              ID_FILE_SAVE
+        MENUITEM "Sa&lva con nome...",          ID_FILE_SAVE_AS
+        MENUITEM "Salva &tutto",                ID_FILE_SALVATUTTO
+        MENUITEM SEPARATOR
+        MENUITEM "Nuovo progetto",              ID_FILE_NUOVOPROGETTO
+        MENUITEM "Ap&ri progetto...",           ID_FILE_APRIPROGETTO
+        MENUITEM "&Aggiungi file al progetto...", ID_PROGETTO_AGGIUNGIFILE
+        MENUITEM "Salva progetto",              ID_FILE_SALVAPROGETTO
+        MENUITEM "Salva progetto con nome...",  ID_FILE_SALVAPROGETTOCONNOME
+        MENUITEM "C&hiudi progetto",            ID_FILE_CHIUDIPROGETTO
+        MENUITEM SEPARATOR
+        MENUITEM "Stam&pa...\tCtrl+P",          ID_FILE_PRINT
+        MENUITEM "Antepri&ma di stampa",        ID_FILE_PRINT_PREVIEW
+        MENUITEM "Imposta s&tampante...",       ID_FILE_PRINT_SETUP
+        MENUITEM SEPARATOR
+        POPUP "File recenti"
+        BEGIN
+            MENUITEM "Ultimo file usato",           ID_FILE_MRU_FILE1
+        END
+        POPUP "Progetti recenti"
+        BEGIN
+            MENUITEM "Ultimo progetto usato",       ID_PROJECT_MRU_1, GRAYED
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "&Esci",                       ID_APP_EXIT
+    END
+    POPUP "&Modifica"
+    BEGIN
+        MENUITEM "&Annulla\tCtrl+Z",            ID_EDIT_UNDO
+        MENUITEM "Rifai\tCtrl+Y",               ID_EDIT_REDO
+        MENUITEM SEPARATOR
+        MENUITEM "Tag&lia\tCtrl+X",             ID_EDIT_CUT
+        MENUITEM "&Copia\tCtrl+C",              ID_EDIT_COPY
+        MENUITEM "&Incolla\tCtrl+V",            ID_EDIT_PASTE
+        MENUITEM SEPARATOR
+        MENUITEM "&Trova...\tCtrl+F",           ID_EDIT_FIND
+        MENUITEM "Trova successivo\tF3",        ID_EDIT_REPEAT
+        MENUITEM "Trova precedente\tShift+F3",  ID_EDIT_REPEAT_BACK
+        MENUITEM "C&erca selezione\tCtrl+F3",   ID_EDIT_TROVASELEZIONE
+        MENUITEM "Cerca in tutti i &file...\tCtrl+Shft+F", 
+                                                ID_EDIT_CERCAINTUTTIIFILE
+        MENUITEM "&Sostituisci...",             ID_EDIT_REPLACE
+        MENUITEM SEPARATOR
+        MENUITEM "Vai alla &riga...\tCtrl+G",   ID_MODIFICA_VAIALLARIGA
+        MENUITEM "Match parentesi\tCtrl+]",     ID_EDIT_MATCH_BRACE
+        MENUITEM "Seleziona &tutto\tCtrl+A",    ID_EDIT_SELECT_ALL
+        MENUITEM SEPARATOR
+        MENUITEM "Inserisci segnalibro\tCtrl+F2", 
+                                                ID_MODIFICA_INSERISCISEGNALIBRO
+
+        MENUITEM "Vai al prossimo segnalibro\tF2", 
+                                                ID_MODIFICA_VAIALPROSSIMOSEGNALIBRO
+
+        MENUITEM "Vai al segnalibro precedente\tShift+F2", 
+                                                ID_MODIFICA_VAIALSEGNALIBROPRECEDENTE
+
+        MENUITEM "Elimina tutti i segnalibri",  ID_MODIFICA_ELIMINATUTTIISEGNALIBRI
+
+    END
+    POPUP "&Compila"
+    BEGIN
+        MENUITEM "&File corrente\tF7",          ID_COMPILA_FILE
+        MENUITEM "&Progetto\tCtrl+F7",          ID_COMPILA_TUTTO
+        MENUITEM "Compila tutto\tCtrl+F10",     ID_COMPILA_COMPILATUTTO
+        MENUITEM SEPARATOR
+        MENUITEM "&Esegui...",                  ID_COMPILA_ESEGUI
+        MENUITEM SEPARATOR
+        MENUITEM "&Impostazioni...",            ID_COMPILA_IMPOSTAZIONI
+    END
+    POPUP "&Debug"
+    BEGIN
+        MENUITEM "Vai",                         ID_DEBUG_VAI
+        MENUITEM "Vai dentro funzione",         ID_DEBUG_VAIDENTROFUNZIONE
+        MENUITEM "Esci da funzione",            ID_DEBUG_ESCIDAFUNZIONE
+        MENUITEM "Interrompi",                  ID_DEBUG_INTERROMPI
+        MENUITEM "Termina esecuzione",          ID_DEBUG_TERMINAESECUZIONE
+        MENUITEM SEPARATOR
+        MENUITEM "Toggle breakpoint",           ID_DEBUG_TOGGLEBREAKPOINT
+    END
+    POPUP "&Strumenti"
+    BEGIN
+        MENUITEM "&Opzioni...\tAlt+F7",         ID_STRUMENTI_OPZIONI
+        MENUITEM "&Personalizza...",            ID_STRUMENTI_PERSONALIZZA
+        MENUITEM SEPARATOR
+        MENUITEM "&Spy...",                     ID_STRUMENTI_SPY
+    END
+    POPUP "&Visualizza"
+    BEGIN
+        MENUITEM "Barra degli st&rumenti",      ID_VIEW_TOOLBAR
+        MENUITEM "Barra di st&ato",             ID_VIEW_STATUS_BAR
+        MENUITEM "Finestra progetto",           ID_VISUALIZZA_FINESTRAPROGETTO
+
+        MENUITEM "Finestra di output",          ID_VISUALIZZA_FINESTRADIOUTPUT
+
+    END
+    POPUP "Fi&nestra"
+    BEGIN
+        MENUITEM "&Sovrapponi",                 ID_WINDOW_CASCADE
+        MENUITEM "&Affianca",                   ID_WINDOW_TILE_HORZ
+        MENUITEM "Di&vidi",                     ID_WINDOW_SPLIT
+        MENUITEM "&Chiudi tutte",               ID_FINESTRA_CHIUDITUTTE
+    END
+    POPUP "&?"
+    BEGIN
+        MENUITEM "&Argomenti della Guida",      ID_HELP_FINDER
+        MENUITEM SEPARATOR
+        MENUITEM "Infor&mazioni su CPiuMeno...", ID_APP_ABOUT
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDR_MAINFRAME ACCELERATORS PRELOAD MOVEABLE PURE 
+BEGIN
+    187,            ID_EDIT_MATCH_BRACE,    VIRTKEY, CONTROL, NOINVERT
+    "A",            ID_FILE_OPEN,           VIRTKEY, CONTROL, NOINVERT
+    "C",            ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    "D",            ID_EDIT_FIND_COMBO,     VIRTKEY, CONTROL, NOINVERT
+    "F",            ID_EDIT_FIND,           VIRTKEY, CONTROL, NOINVERT
+    "F",            ID_EDIT_CERCAINTUTTIIFILE, VIRTKEY, SHIFT, CONTROL, 
+                                                    NOINVERT
+    "G",            ID_MODIFICA_VAIALLARIGA, VIRTKEY, CONTROL, NOINVERT
+    "N",            ID_FILE_NEW,            VIRTKEY, CONTROL, NOINVERT
+    "P",            ID_FILE_PRINT,          VIRTKEY, CONTROL, NOINVERT
+    "S",            ID_FILE_SAVE,           VIRTKEY, CONTROL, NOINVERT
+    "V",            ID_EDIT_PASTE,          VIRTKEY, CONTROL, NOINVERT
+    VK_BACK,        ID_EDIT_UNDO,           VIRTKEY, ALT, NOINVERT
+    VK_DELETE,      ID_EDIT_CUT,            VIRTKEY, SHIFT, NOINVERT
+    VK_F1,          ID_HELP,                VIRTKEY, NOINVERT
+    VK_F1,          ID_CONTEXT_HELP,        VIRTKEY, SHIFT, NOINVERT
+    VK_F10,         ID_COMPILA_COMPILATUTTO, VIRTKEY, CONTROL, NOINVERT
+    VK_F2,          ID_MODIFICA_VAIALPROSSIMOSEGNALIBRO, VIRTKEY, NOINVERT
+    VK_F2,          ID_MODIFICA_INSERISCISEGNALIBRO, VIRTKEY, CONTROL, 
+                                                    NOINVERT
+    VK_F2,          ID_MODIFICA_VAIALSEGNALIBROPRECEDENTE, VIRTKEY, SHIFT, 
+                                                    NOINVERT
+    VK_F3,          ID_EDIT_REPEAT,         VIRTKEY, NOINVERT
+    VK_F3,          ID_EDIT_TROVASELEZIONE, VIRTKEY, CONTROL, NOINVERT
+    VK_F3,          ID_EDIT_REPEAT_BACK,    VIRTKEY, SHIFT, NOINVERT
+    VK_F4,          ID_NEXT_ERROR,          VIRTKEY, NOINVERT
+    VK_F4,          ID_PREV_ERROR,          VIRTKEY, SHIFT, NOINVERT
+    VK_F5,          ID_DEBUG_VAI,           VIRTKEY, NOINVERT
+    VK_F5,          ID_DEBUG_INTERROMPI,    VIRTKEY, SHIFT, NOINVERT
+    VK_F6,          ID_NEXT_PANE,           VIRTKEY, NOINVERT
+    VK_F6,          ID_PREV_PANE,           VIRTKEY, SHIFT, NOINVERT
+    VK_F7,          ID_COMPILA_TUTTO,       VIRTKEY, NOINVERT
+    VK_F7,          ID_COMPILA_FILE,        VIRTKEY, CONTROL, NOINVERT
+    VK_F7,          ID_STRUMENTI_OPZIONI,   VIRTKEY, ALT, NOINVERT
+    VK_F9,          ID_DEBUG_TOGGLEBREAKPOINT, VIRTKEY, NOINVERT
+    VK_INSERT,      ID_EDIT_COPY,           VIRTKEY, CONTROL, NOINVERT
+    VK_INSERT,      ID_EDIT_PASTE,          VIRTKEY, SHIFT, NOINVERT
+    "X",            ID_EDIT_CUT,            VIRTKEY, CONTROL, NOINVERT
+    "Z",            ID_EDIT_UNDO,           VIRTKEY, CONTROL, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOG DISCARDABLE  0, 0, 293, 137
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Infor&mazioni su CPiuMeno..."
+FONT 8, "MS Sans Serif"
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
+    LTEXT           "CPiuMeno Versione 1.0",IDC_STATIC,40,10,119,8,
+                    SS_NOPREFIX
+    DEFPUSHBUTTON   "OK",IDOK,126,116,43,14,WS_GROUP
+    LTEXT           "Compilatore C multi-processore",IDC_STATIC,39,24,119,8,
+                    SS_NOPREFIX
+    LTEXT           "Copyright © 2023-2026 Dario's automation",IDC_STATIC,39,
+                    38,129,8
+END
+
+IDD_OPZIONI_COMPIL_PAGE1 DIALOG DISCARDABLE  0, 0, 293, 153
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Generali"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Sub-tipo:",IDC_STATIC,7,26,29,8
+    LTEXT           "Cartella include:",IDC_STATIC,7,47,51,8
+    COMBOBOX        IDC_COMBO4,63,44,203,68,CBS_DROPDOWNLIST | CBS_SORT | 
+                    WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Cartella librerie:",IDC_STATIC,7,64,48,8
+    COMBOBOX        IDC_COMBO5,63,61,204,68,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Ricarica ultimo progetto alla partenza",IDC_CHECK2,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,86,132,10
+    PUSHBUTTON      "...",IDC_BUTTON1,273,44,13,12
+    PUSHBUTTON      "...",IDC_BUTTON2,273,60,13,12
+END
+
+IDD_SPLASH DIALOG DISCARDABLE  0, 0, 268, 187
+STYLE DS_CENTER | WS_POPUP | WS_BORDER
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "CPiuMeno",IDC_STATIC,119,63,23,8
+END
+
+IDD_MY_FIND_DIALOG DIALOG DISCARDABLE  36, 44, 289, 99
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Trova"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Tr&ova:",1088,5,12,28,8
+    CONTROL         "Solo parole &intere",1040,"Button",BS_AUTOCHECKBOX | 
+                    WS_GROUP | WS_TABSTOP,5,40,100,12
+    CONTROL         "Confronta &maiuscole/minuscole",1041,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,5,53,115,12
+    GROUPBOX        "Direzione",1072,146,34,70,32,WS_GROUP
+    CONTROL         "S&ù",1056,"Button",BS_AUTORADIOBUTTON | WS_GROUP | 
+                    WS_TABSTOP,151,45,25,10
+    CONTROL         "G&iù",1057,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,179,
+                    45,28,10
+    DEFPUSHBUTTON   "&Trova successivo",IDOK,225,11,59,14,WS_GROUP
+    PUSHBUTTON      "Annulla",IDCANCEL,224,80,60,14
+    PUSHBUTTON      "&Marca tutti",IDOK2,225,31,59,14,WS_GROUP
+    COMBOBOX        1152,34,10,176,38,CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | 
+                    WS_TABSTOP
+END
+
+IDD_MY_REPLACE_DIALOG DIALOG DISCARDABLE  36, 44, 270, 106
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Sostituisci"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Tr&ova:",1088,5,6,40,8
+    EDITTEXT        1152,47,5,136,12,ES_AUTOHSCROLL | WS_GROUP
+    LTEXT           "S&ostituisci con:",1089,5,22,40,16
+    EDITTEXT        1153,47,22,137,12,ES_AUTOHSCROLL | WS_GROUP
+    CONTROL         "Solo parole &intere",1040,"Button",BS_AUTOCHECKBOX | 
+                    WS_GROUP | WS_TABSTOP,5,44,100,12
+    CONTROL         "Confronta &maiuscole/minuscole",1041,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,5,58,115,12
+    DEFPUSHBUTTON   "&Trova successivo",IDOK,205,5,60,14,WS_GROUP
+    PUSHBUTTON      "&Sostituisci",1024,205,24,60,14
+    PUSHBUTTON      "Sostituisci &tutto",1025,205,41,60,14
+    PUSHBUTTON      "Annulla",IDCANCEL,205,87,60,14
+END
+
+IDD_OPZIONI_COMPIL_PAGE2 DIALOG DISCARDABLE  0, 0, 272, 243
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Compilatore"
+FONT 8, "MS Sans Serif"
+BEGIN
+    GROUPBOX        "Preprocessore",IDC_STATIC,6,6,260,62
+    CONTROL         "&Solo preprocessore",IDC_CHECK5,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,17,72,9
+    CONTROL         "Disabilita le macro predefinite",IDC_CHECK9,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,28,108,9
+    CONTROL         "Solo controllo sintassi",IDC_CHECK12,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,39,83,10
+    LTEXT           "Altre definizioni:",IDC_STATIC,10,53,50,8
+    EDITTEXT        IDC_EDIT1,64,51,202,12,ES_AUTOHSCROLL
+    GROUPBOX        "Compilatore",IDC_STATIC,6,71,260,89
+    CONTROL         "Controllo &stack",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,15,82,60,9
+    CONTROL         "Caratteri &unsigned",IDC_CHECK4,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,127,81,72,9
+    CONTROL         "Controllo &puntatori",IDC_CHECK2,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,93,75,9
+    CONTROL         "Stringhe uguali compattate",IDC_CHECK13,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,127,93,100,10
+    CONTROL         "Chiamate in stile Pascal",IDC_CHECK3,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,106,93,9
+    CONTROL         "Chiamate in-line",IDC_CHECK10,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,127,105,65,10
+    CONTROL         "Inserisce sorgente in file C",IDC_CHECK8,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,122,108,9
+    CONTROL         "Genera file C",IDC_CHECK7,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,15,133,72,9
+    CONTROL         "Genera file listing",IDC_CHECK6,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,15,144,72,9
+    GROUPBOX        "Ottimizzatore",IDC_STATIC,6,161,260,28
+    CONTROL         "Ottimizza loop",IDC_CHECK11,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,15,173,59,10
+    CONTROL         "Max velocità",IDC_CHECK15,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,80,173,56,10
+    CONTROL         "Min dimensione",IDC_CHECK16,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,145,173,65,10
+    CONTROL         "Debug",IDC_CHECK14,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,16,225,37,10
+    CONTROL         "Costanti",IDC_CHECK17,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,219,173,41,10
+    LTEXT           "Liv. warning:",IDC_STATIC,178,17,41,8
+    COMBOBOX        IDC_COMBO3,225,15,31,50,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Warning come errori",IDC_CHECK18,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,185,28,79,10
+    CONTROL         "Mantieni commenti",IDC_CHECK19,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,149,39,75,10
+END
+
+IDD_OPZIONI_COMPIL_PAGE3 DIALOG DISCARDABLE  0, 0, 292, 168
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Editor"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Dimensione Tab:",IDC_STATIC,7,9,54,8
+    EDITTEXT        IDC_EDIT1,65,7,23,13,ES_AUTOHSCROLL
+    CONTROL         "Testo colorato",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,7,26,61,10
+    CONTROL         "Salva file prima di compilare",IDC_CHECK2,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,46,103,10
+    CONTROL         "Chiedi prima di salvare",IDC_CHECK3,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,135,46,86,10
+    CONTROL         "Ricarica automaticamente i file modificati esternamente",
+                    IDC_CHECK4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,60,
+                    188,10
+    CONTROL         "Papillon",IDC_RADIO1,"Button",BS_AUTORADIOBUTTON,72,151,
+                    41,10
+    CONTROL         "Formaldehyde",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,
+                    122,151,60,10
+    CONTROL         ":)",IDC_RADIO3,"Button",BS_AUTORADIOBUTTON,192,151,20,
+                    10
+    CONTROL         "Fai backup dei file",IDC_CHECK5,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,7,79,73,10
+END
+
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "041004b0"
+        BEGIN
+            VALUE "Comments", "MORTE agli umani di merda 4ever!\0"
+            VALUE "CompanyName", "Dario's Automation (Cyberdyne (ex ADPM Synthesis sas))\0"
+            VALUE "FileDescription", "CPiuMeno, traduttore C++ a C\0"
+            VALUE "FileVersion", "1, 0, 0, 0\0"
+            VALUE "InternalName", "CPIUMENO\0"
+            VALUE "LegalCopyright", "Copyright © Dario's Automation 2023-2026\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "CPIUMENO.EXE\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "CPiuMeno Applicazione\0"
+            VALUE "ProductVersion", "1, 0, 0, 0\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x410, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 286
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 130
+    END
+
+    IDD_OPZIONI_COMPIL_PAGE1, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 286
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 146
+    END
+
+    IDD_SPLASH, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 261
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 180
+    END
+
+    IDD_MY_FIND_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 5
+        RIGHTMARGIN, 284
+        TOPMARGIN, 5
+        BOTTOMMARGIN, 94
+    END
+
+    IDD_MY_REPLACE_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 5
+        RIGHTMARGIN, 265
+        TOPMARGIN, 5
+        BOTTOMMARGIN, 101
+    END
+
+    IDD_OPZIONI_COMPIL_PAGE2, DIALOG
+    BEGIN
+        LEFTMARGIN, 6
+        RIGHTMARGIN, 266
+        TOPMARGIN, 6
+        BOTTOMMARGIN, 238
+    END
+
+    IDD_OPZIONI_COMPIL_PAGE3, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 285
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 161
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_OPZIONI_COMPIL_PAGE2 DLGINIT
+BEGIN
+    IDC_COMBO3, 0x403, 2, 0
+0x0030, 
+    IDC_COMBO3, 0x403, 2, 0
+0x0031, 
+    IDC_COMBO3, 0x403, 2, 0
+0x0032, 
+    IDC_COMBO3, 0x403, 2, 0
+0x0033, 
+    IDC_COMBO3, 0x403, 2, 0
+0x0034, 
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE PRELOAD DISCARDABLE 
+BEGIN
+    IDR_MAINFRAME           "CPiuMeno"
+    IDR_CTYPE               "\nSenzaTitolo\nFile C++\nFile sorgenti C++ (*.cpp, *.hpp, *.h)\n.cpp;.hpp;.h\nCPiuMeno\nDocumento sorgente C++"
+    IDR_CTYPE2              "\nSenzaTitolo\nFile H\nFile include C++ (*.hpp, *.h)\n.hpp;.h\nCPiuMeno\nDocumento include C++"
+END
+
+STRINGTABLE PRELOAD DISCARDABLE 
+BEGIN
+    AFX_IDS_APP_TITLE       "CPiuMeno"
+    AFX_IDS_IDLEMESSAGE     "Per informazioni, premere F1"
+    AFX_IDS_HELPMODEMESSAGE "Selezionare un oggetto su cui si desiderano informazioni"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_INDICATOR_EXT        "EST"
+    ID_INDICATOR_CAPS       "MA"
+    ID_INDICATOR_NUM        "NUM"
+    ID_INDICATOR_SCRL       "BS"
+    ID_INDICATOR_OVR        "SSC"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_FILE_NEW             "Crea un nuovo documento\nNuovo"
+    ID_FILE_OPEN            "Apre un documento esistente\nApri"
+    ID_FILE_CLOSE           "Chiude il documento attivo\nChiudi"
+    ID_FILE_SAVE            "Salva il documento attivo\nSalva"
+    ID_FILE_SAVE_AS         "Salva il documento attivo con un nuovo nome\nSalva con nome"
+    ID_FILE_PAGE_SETUP      "Modifica le impostazioni di stampa\nImposta pagina"
+    ID_FILE_PRINT_SETUP     "Modifica le impostazioni relative alla stampante e alla stampa\nImposta stampante"
+    ID_FILE_PRINT           "Stampa il documento attivo\nStampa"
+    ID_FILE_PRINT_PREVIEW   "Visualizza le pagine per intero\nAnteprima di stampa"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_APP_ABOUT            "Visualizza le informazioni sul programma, il numero di versione e le informazioni di copyright\nInformazioni su..."
+    ID_APP_EXIT             "Esce dall'applicazione e chiede di salvare i documenti\nEsci"
+    ID_HELP_INDEX           "Elenca gli argomenti della Guida\nIndice"
+    ID_HELP_FINDER          "Elenca gli argomenti della Guida\nArgomenti della Guida"
+    ID_HELP_USING           "Visualizza le istruzioni su come utilizzare la Guida\n?"
+    ID_CONTEXT_HELP         "Visualizza la Guida per i pulsanti selezionati, i menu e le finestre\n?"
+    ID_HELP                 "Visualizza la Guida per l'operazione o il comando corrente\n?"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_FILE_MRU_FILE1       "Apre questo documento"
+    ID_FILE_MRU_FILE2       "Apre questo documento"
+    ID_FILE_MRU_FILE3       "Apre questo documento"
+    ID_FILE_MRU_FILE4       "Apre questo documento"
+    ID_FILE_MRU_FILE5       "Apre questo documento"
+    ID_FILE_MRU_FILE6       "Apre questo documento"
+    ID_FILE_MRU_FILE7       "Apre questo documento"
+    ID_FILE_MRU_FILE8       "Apre questo documento"
+    ID_FILE_MRU_FILE9       "Apre questo documento"
+    ID_FILE_MRU_FILE10      "Apre questo documento"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_NEXT_PANE            "Passa al riquadro della finestra successivo\nRiquadro successivo"
+    ID_PREV_PANE            "Ritorna al riquadro della finestra precedente\nRiquadro precedente"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_WINDOW_NEW           "Apre un'altra finestra per il documento attivo\nNuova finestra"
+    ID_WINDOW_CASCADE       "Dispone le finestre sovrapponendole\nSovrapponi finestre"
+    ID_WINDOW_TILE_HORZ     "Dispone le finestre senza sovrapporle\nAffianca finestre"
+    ID_WINDOW_TILE_VERT     "Dispone le finestre senza sovrapporle\nAffianca finestre"
+    ID_WINDOW_SPLIT         "Divide la finestra attiva in riquadri\nDividi"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_EDIT_CLEAR           "Cancella la selezione\nCancella"
+    ID_EDIT_CLEAR_ALL       "Cancella tutto\nCancella tutto"
+    ID_EDIT_COPY            "Copia la selezione e la pone negli Appunti\nCopia"
+    ID_EDIT_CUT             "Taglia la selezione e la pone negli Appunti\nTaglia"
+    ID_EDIT_FIND            "Trova il testo specificato\nTrova"
+    ID_EDIT_PASTE           "Inserisce il contenuto degli Appunti\nIncolla"
+    ID_EDIT_REPEAT          "Ripete l'ultima azione\nRipeti"
+    ID_EDIT_REPLACE         "Sostituisce il testo specificato con un testo differente\nSostituisci"
+    ID_EDIT_SELECT_ALL      "Seleziona l'intero documento\nSeleziona tutto"
+    ID_EDIT_UNDO            "Annulla l'ultima azione\nAnnulla"
+    ID_EDIT_REDO            "Ripristina l'azione precedentemente annullata\nRipristina"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_VIEW_TOOLBAR         "Mostra o nasconde la barra degli strumenti\nMostra/nascondi barra degli strumenti"
+    ID_VIEW_STATUS_BAR      "Mostra o nasconde la barra di stato\nMostra/nascondi barra di stato"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    AFX_IDS_SCSIZE          "Modifica le dimensioni della finestra"
+    AFX_IDS_SCMOVE          "Modifica la posizione della finestra"
+    AFX_IDS_SCMINIMIZE      "Riduce la finestra ad icona"
+    AFX_IDS_SCMAXIMIZE      "Allarga la finestra a tutto schermo"
+    AFX_IDS_SCNEXTWINDOW    "Passa alla finestra successiva del documento "
+    AFX_IDS_SCPREVWINDOW    "Passa alla precedente finestra del documento"
+    AFX_IDS_SCCLOSE         "Chiude la finestra attiva e chiede di salvare i documenti"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    AFX_IDS_SCRESTORE       "Ripristina la finestra alle dimensioni normali"
+    AFX_IDS_SCTASKLIST      "Attiva l'Elenco dei task"
+    AFX_IDS_MDICHILD        "Attiva questa finestra"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    AFX_IDS_PREVIEW_CLOSE   "Chiude la modalità anteprima di stampa\n Annulla anteprima"
+    IDS_COORDINATE          "Coordinate"
+    IDS_FILEAPERTI          "FileAperti"
+    IDS_NOMECC              "NomeCompilatore"
+    IDS_OPZIONI             "Opzioni"
+    IDS_ALTREDEFINE         "AltreDefine"
+    IDS_MEMORYMODEL         "ModelloMemoria"
+    IDS_COORDINATECHILD     "CoordinateChild"
+    IDS_WARNING             "Warning"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_FILE_SALVATUTTO      "Salva il progetto e tutti i documenti aperti\nSalva tutto"
+    ID_FILE_NUOVO           "Crea un nuovo file sorgente\nNuovo"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_COMPILA_FILE         "Compila il file selezionato\nCompila file"
+    ID_COMPILA_TUTTO        "Compila l'intero progetto\nCompila progetto"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_INDICATOR_POS        "xy"
+    IDS_AUTORICARICAPROGETTO "AutoRicaricaProgettoPartenza"
+    IDS_TESTOCOLORATO       "TestoColorato"
+    IDS_CARTELLAINCLUDE     "CartellaInclude"
+    IDS_CARTELLALIBRERIE    "CartellaLibrerie"
+    IDS_AUTORICARICAFILES   "AutoRicaricaFiles"
+    IDS_TABSIZE             "TabSize"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_PROJECT_MRU_1        "Apre questo progetto"
+    ID_PROJECT_MRU_2        "Apre questo progetto"
+    ID_PROJECT_MRU_3        "Apre questo progetto"
+    ID_PROJECT_MRU_4        "Apre questo progetto"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    ID_COMPILA_COMPILATUTTO "Compila da capo l'intero progetto\nCompila da capo progetto"
+END
+
+#endif    // Italian (Italy) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.K.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_UK
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_PROJECTTREE MENU DISCARDABLE 
+BEGIN
+    POPUP "tree"
+    BEGIN
+        MENUITEM "&Compila",                    ID_COMPILA_FILE2
+        MENUITEM "&Apri",                       ID_TREE_OPEN
+        MENUITEM SEPARATOR
+        MENUITEM "&Impostazioni",               ID_TREE_IMPOSTAZIONI
+        MENUITEM "Escludi",                     ID_TREE_ESCLUDI
+        MENUITEM "Elimina",                     ID_TREE_ELIMINA
+        MENUITEM SEPARATOR
+        MENUITEM "&Proprietà",                  ID_TREE_PROPRIET
+    END
+END
+
+IDR_PROJECTTREE1 MENU DISCARDABLE 
+BEGIN
+    POPUP "tree1"
+    BEGIN
+        MENUITEM "&Aggiungi file...",           ID_TREE_ADD
+        MENUITEM SEPARATOR
+        MENUITEM "&Proprietà",                  ID_TREE_PROPRIET
+        MENUITEM "&Nuova cartella...",          ID_TREE1_NUOVACARTELLA
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_OUTPUT_BAR DIALOG DISCARDABLE  0, 0, 422, 93
+STYLE WS_CHILD
+FONT 8, "MS Sans Serif"
+BEGIN
+    EDITTEXT        IDC_TXT_OUTPUT,7,7,396,53,ES_MULTILINE | ES_AUTOHSCROLL | 
+                    ES_READONLY | ES_WANTRETURN | WS_VSCROLL
+    CONTROL         "Tab1",IDC_OUTPUT_TAB,"SysTabControl32",TCS_BOTTOM,33,70,
+                    102,16
+    EDITTEXT        IDC_TXT_OUTPUT2,7,15,396,53,ES_MULTILINE | 
+                    ES_AUTOHSCROLL | ES_READONLY | ES_WANTRETURN | 
+                    WS_VSCROLL
+END
+
+IDD_TREE_PROJECT DIALOG DISCARDABLE  0, 0, 123, 215
+STYLE WS_CHILD
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL         "Tree1",IDC_TREE_PROJECT,"SysTreeView32",TVS_HASBUTTONS | 
+                    TVS_HASLINES | TVS_LINESATROOT | TVS_INFOTIP | WS_BORDER | 
+                    WS_TABSTOP,5,3,110,177
+END
+
+IDD_GOTO_LINE DIALOG DISCARDABLE  0, 0, 186, 93
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Vai a"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,45,72,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,103,72,50,14
+    LTEXT           "Riga:",IDC_STATIC,7,22,32,8
+    EDITTEXT        IDC_EDIT_LINE,41,20,50,12,ES_AUTOHSCROLL
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_OUTPUT_BAR, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 415
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 86
+    END
+
+    IDD_TREE_PROJECT, DIALOG
+    BEGIN
+        RIGHTMARGIN, 115
+        BOTTOMMARGIN, 127
+    END
+
+    IDD_GOTO_LINE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 179
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 86
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Cursor
+//
+
+IDC_RIGHT_CURSOR        CURSOR  DISCARDABLE     "res\\cursor1.cur"
+#endif    // English (U.K.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ITA)
+#ifdef _WIN32
+LANGUAGE 16, 1
+#pragma code_page(1252)
+#endif
+#include "res\cpiumeno.rc2"  // non-Microsoft Visual C++ edited resources
+#include "l.ita\afxres.rc"          // Standard components
+#include "l.ita\afxprint.rc"        // printing/print preview resources
+#endif
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

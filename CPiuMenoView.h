@@ -1,0 +1,300 @@
+// cpiumenoEditView.h : interface of the cpiumenoCEditView class
+//
+/////////////////////////////////////////////////////////////////////////////
+
+class CRichEditCtrlEx;
+#define WB_LEFT            0
+#define WB_RIGHT           1
+#define WB_ISDELIMITER     2
+#define WB_CLASSIFY        3
+#define WB_MOVEWORDLEFT    4
+#define WB_MOVEWORDRIGHT   5
+#define WB_LEFTSTART       6
+#define WB_RIGHTSTART      7
+
+
+
+class CPiuMenoView; // Forward declaration
+
+class CGutterWnd : public CWnd {
+public:
+  CGutterWnd();
+	DECLARE_DYNCREATE(CGutterWnd)
+  virtual ~CGutterWnd();
+	void PostNcDestroy();
+
+protected:
+	afx_msg void OnPaint();
+  afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg BOOL OnSetCursor();
+	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+  DECLARE_MESSAGE_MAP()
+	};
+
+
+class CMyFindReplaceDialog;
+
+class CPiuMenoView : public CRichEditView {
+protected: // create from serialization only
+	CPiuMenoView();
+	DECLARE_DYNCREATE(CPiuMenoView)
+
+// Attributes
+public:
+	UINT_PTR m_uTimerID;
+	BOOL m_bDelayUpdateItems;
+	BOOL m_bInitialUpdateDone;
+
+	BOOL CreateView(int row, int col, CRuntimeClass* pViewClass, SIZE sizeInit, CCreateContext* pContext);
+	BOOL PreTranslateMessage(MSG*);
+	CPiuMenoDoc* GetDocument();
+	BOOL IsModified() { return GetRichEditCtrl().GetModify(); }
+	static DWORD CALLBACK MyStreamInCallback(DWORD , LPBYTE , LONG , LONG *);
+	static DWORD CALLBACK MyStreamOutCallback(DWORD , LPBYTE , LONG , LONG *);
+	long StreamIn(EDITSTREAM);
+	long StreamOut(EDITSTREAM);
+
+protected:
+	CMyFindReplaceDialog *m_pFindDlg; // Puntatore alla dialog attiva
+//  CStringEx m_strLastSearch;        // Ultima stringa cercata MESSA GLOBALE!
+  BOOL m_bMatchCase;              // Rispetta maiuscole/minuscole
+  BOOL m_bWholeWord;              // Parola intera
+
+	CString m_strSelectedInclude; // Mantiene il nome del file (es. "stdio.h" o "mioheader.h")
+
+
+//	CGutterWnd m_gutterWnd;
+//  const int m_nGutterWidth; // Larghezza della gutter in pixel
+
+	// Funzione helper per eseguire la ricerca vera e propria nel testo
+  BOOL DoSearchText(LPCTSTR lpszFind, BOOL bDown, BOOL bCase, BOOL bWholeWord);
+	CString GetRichTextSelection();
+	void SelectWordAtCaret();
+	CString GetWordAtCaret();
+
+	// per testo colorato
+	void HighlightVisibleRange();
+	void ParseAndApplyHighlighting(const CString&, int);
+	CHARFORMAT2 CreateColorFormat(COLORREF);
+	void ApplyStyleToRange(int, int, const CHARFORMAT2&);
+	int GetVisibleLineCount();
+	BOOL IsKeyword(const CString& strWord, const LPCTSTR szKeywords[]);
+	void GetTextRange(int nStart, int nEnd, CString& strText);
+
+long ScanForMatchingBrace(long nStartPos, TCHAR chOpen);
+
+// Operations
+public:
+	BOOL GetWindowPos(RECT *);
+	uint32_t CharFromPos(POINT);
+	BOOL SetTabStops(const int& cxEachStop);
+	uint32_t GetLineCount();
+//	CRichEditCtrl& GetRichEditCtrl() { return (CRichEditCtrlEx*)&GetRichEditCtrl(); };
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(cpiumenoCEditView)
+	public:
+//	virtual void OnDraw(CDC* pDC);  // overridden to draw this view
+	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
+	protected:
+	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
+	virtual void OnBeginPrinting(CDC* pDC, CPrintInfo* pInfo);
+	virtual void OnEndPrinting(CDC* pDC, CPrintInfo* pInfo);
+	virtual void OnPaint();
+	//}}AFX_VIRTUAL
+	void OnUpdatePosIndicator(CCmdUI* pCmdUI);
+  // Gestori dei messaggi
+  afx_msg void OnEditFindCustom();
+	afx_msg LRESULT OnFindReplaceMsg(WPARAM wParam, LPARAM lParam);
+  afx_msg void OnFindWordNext();
+  afx_msg LRESULT OnFindReplaceCmd(WPARAM, LPARAM);
+
+	CString GetWordAtPoint(CPoint ptClient);
+	void OnOpenIncludeFile();
+	afx_msg LRESULT OnFileChangedExternally(WPARAM, LPARAM);
+
+// Implementation
+public:
+	virtual ~CPiuMenoView();
+#ifdef _DEBUG
+	virtual void AssertValid() const;
+	virtual void Dump(CDumpContext& dc) const;
+#endif
+
+protected:
+
+// Generated message map functions
+protected:
+	//{{AFX_MSG(CPiuMenoView)
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnDestroy();
+	afx_msg void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnEditTrovaselezione();
+	afx_msg void OnUpdateEditTrovaselezione(CCmdUI* pCmdUI);
+	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnEditFind();
+	afx_msg void OnEditRepeat();
+	afx_msg void OnUpdateEditRepeat(CCmdUI* pCmdUI);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnEditFindReplace();
+	afx_msg void OnUpdateOnEditFindReplace(CCmdUI* pCmdUI);
+	afx_msg void OnEditMatchBrace();
+	afx_msg void OnEditRepeatBack();
+	afx_msg void OnUpdateEditRepeatBack(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateEditRedo(CCmdUI* pCmdUI);
+	afx_msg void OnUpdateEditUndo(CCmdUI* pCmdUI);
+	afx_msg void OnEditUndo();
+	afx_msg void OnEditRedo();
+	//}}AFX_MSG
+	void OnTimer(UINT_PTR);
+	afx_msg void OnInitialUpdate();
+	afx_msg void OnEnChange();
+	afx_msg void OnEnVScroll();
+	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
+	afx_msg void OnActivateView(BOOL bActivate, CView* pActivateView, CView* pDeactiveView);
+	DECLARE_MESSAGE_MAP()
+
+friend class CMainFrame;
+};
+
+#ifndef _DEBUG  // debug version in CPiuMenoEditView.cpp
+inline CPiuMenoDoc* CPiuMenoView::GetDocument()
+   { return (CPiuMenoDoc*)m_pDocument; }
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+// CPiuMenoViewOut view
+
+
+enum FastHtmlColorState {
+	epsUnknown		= 0x00,
+	epsInTag		= 0x01,
+	epsInDblQuotes	= 0x02,
+	epsInComment	= 0x03,
+	epsInNormalText	= 0x04,
+	epsError		= 0x10
+};
+#define LINE_COLORED	0x80	// This bit indicates that a line is already colored
+
+/////////////////////////////////////////////////////////////////////////////
+// CRichEditCtrlEx window
+
+class CRichEditCtrlEx : public CRichEditCtrl {
+// Construction/Destruction
+public:
+	// Default constructor
+	CRichEditCtrlEx();
+	// Default destructor
+	virtual ~CRichEditCtrlEx();
+
+public:
+// Character format functions
+	// Sets the character format to be used for Tags
+	void SetTagCharFormat(int nFontHeight = 8, 
+		COLORREF clrFontColour = RGB(128, 0, 0), 
+		CString strFontFace = _T("Courier New"),
+		bool bParse = true);
+	// Sets  the character format to be used for Tags
+	void SetTagCharFormat(CHARFORMAT& cfTags, bool bParse = true);
+	// Sets the character format to be used for Quoted text
+	void SetQuoteCharFormat(int nFontHeight = 8, 
+		COLORREF clrFontColour = RGB(0, 128, 128), 
+		CString strFontFace = _T("Courier New"),bool bParse = true);
+	// Sets  the character format to be used for Quoted text
+	void SetQuoteCharFormat(CHARFORMAT& cfQuoted, bool bParse = true);
+	// Sets the character format to be used for Comments
+	void SetCommentCharFormat(int nFontHeight = 8, 
+		COLORREF clrFontColour = RGB(0, 128, 0), 
+		CString strFontFace = _T("Courier New"),bool bParse = true);
+	// Sets  the character format to be used for Comments
+	void SetCommentCharFormat(CHARFORMAT& cfComments, bool bParse = true);
+	// Sets the character format to be used for Normal Text
+	void SetTextCharFormat(int nFontHeight = 8, 
+		COLORREF clrFontColour = RGB(0, 0, 0), 
+		CString strFontFace = _T("Courier New"),bool bParse = true);
+	// Sets  the character format to be used for Normal Text
+	void SetTextCharFormat(CHARFORMAT& cfText, bool bParse = true);
+
+// Parsing functions
+	// Parses all lines in the control, colouring each line accordingly.
+	void ParseAllLines();
+	
+// Miscellaneous functions
+	// Loads the contents of the specified file into the control.
+	// Replaces the existing contents and parses all lines.
+	void LoadFile(CString& strPath);
+	
+	// Enables/disables the background coloring timer. If enabled, event
+	// is raised every uiInterval millis and nNumOfLines uncolored lines are colored.
+	void SetBckgdColorTimer(UINT uiInterval = 1000, int nNumOfLines = 10);
+
+// Overrides
+	// ClassWizard generated virtual function overrides
+	//{{AFX_VIRTUAL(CRichEditCtrlEx)
+	protected:
+	virtual void PreSubclassWindow();
+	//}}AFX_VIRTUAL
+
+// Generated message map functions
+protected:
+	//{{AFX_MSG(CRichEditCtrlEx)
+	afx_msg void OnChar(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg UINT OnGetDlgCode();
+	afx_msg void OnChange();
+	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
+	afx_msg void OnTimer(UINT nIDEvent);
+	//}}AFX_MSG
+
+	DECLARE_MESSAGE_MAP()
+
+	CHARFORMAT	m_cfTags;
+	CHARFORMAT	m_cfText;
+	CHARFORMAT	m_cfQuoted;
+	CHARFORMAT	m_cfComment;
+
+	// To handle multiline comments correctly, I must track the color state of the end of every line  
+	int		m_nLineCount;		// Number of lines in RichEditCtr
+	BYTE*	m_pLinesEndState;	// Array of size m_nLineCount for holding the color state of each line's end char   
+
+	bool	m_bOnEnVscrollDisabled;
+	int		m_nOnChangeCharPosition;	// OnKeyDown signals OnChange to InvalidateColorStates
+
+	UINT	m_uiBckgdTimerInterval;		// How many millis between each iteration
+	int		m_nBckgdTimerNumOfLines;	// How many lines to color in each iteration
+	bool	m_bBckgdTimerActivated;
+
+private:
+// Helper functions
+	int GetLastVisibleLine();
+	FastHtmlColorState ParseLines(LPCTSTR pLines, int nCharPosition, bool bColor, int nCurrentLine = -1);
+	void ColorVisibleLines(int nCharPosition = -1);
+	void InvalidateColorStates(int nLineIndex);
+	void UpdateLinesArraySize();
+
+	int GetTextRange(int nFirst, int nLast, CString& refString);
+	int CharFromPos(CPoint pt);
+
+	int ColorRangeHelper(int nColorStart, int nColorEnd, CHARFORMAT charFormat, int nColorFromChar = -1);
+	int GetLineHelper(int nLineIndex, CString& strLine, int nLineLength = -1);
+	void TrimRightCrLfHelper(CString& strText, int nLength = -1);
+	int FindCommentStartHelper(int nCharPosition);
+	int FindCommentEndHelper(int nCharPosition);
+	void SetFirstLineCharColor(int nLineIndex);
+
+	void StartColoringTimer();
+	void StopColoringTimer();	// CURRENTLY NOT USED
+	BOOL IsWindowCompletelyObscured();
+
+public:
+	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnEnVscroll();
+};
+
+
