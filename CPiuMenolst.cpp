@@ -10,7 +10,7 @@ struct ERRORE CPlusMinus::Errs[]={
   1000,1,"unknown internal error - contact Cyberdyne",
   1001,1,"internal error:",
   1002,1,"unsupported:",
-  1003,1,"partially unimplemented:",
+  1003,1,"error count exceeds 100; stopping compilation",
   1004,1,"unexpected EOF",
   1016,1,"#if[n]def expected an identifier",
   1017,1,"unexpected chars",
@@ -33,6 +33,7 @@ struct ERRORE CPlusMinus::Errs[]={
 #else
   1126,1,"automatic allocation exceeds size (128)" /*anche 2127*/,
 #endif
+  2000,1,"partially unimplemented:",
   2001,1,"newline in constant",
   2007,1,"#define syntax",
   2010,1,"invalid formal list",
@@ -127,6 +128,7 @@ struct ERRORE CPlusMinus::Errs[]={
 // anche ,gemini	2301,1,"local variable '%s' in naked function '%s' allocated without stack frame"
   2352,1,"illegal call of non-static member function",
   2371,1,"redefinition (different basic types):",/*anche altri*/		// questa per funzioni
+  2438,1,"cannot initialize static data member in constructor initializer list",		// anche 2649
   2440,1,"cannot convert from 'void' to ",		// e mettere il tipo :)
 	2504,1,"base class undefined",
   2511,1,"overloaded member function not found in ",		// anche 2632
@@ -140,8 +142,10 @@ struct ERRORE CPlusMinus::Errs[]={
 	2561,1,"function must return a value",
 	2562,1,"void function returning a value",
 	2572,1,"redefinition of default argument",
+	2588,1,"qualificatore di classe non valido per una dichiarazione globale",		// anche 2253 dice..
   2599,1,"local records are not supported",
   2601,1,"local functions are not supported",
+  2649,1,"cannot initialize static data member in constructor initializer list",		// anche 2438
 	2651,1,"a union cannot be used as a base class",
 	2652,1,"a union cannot inherit from a base class",		// anche 2653 dice
   2660,1,"function does not take N arguments",
@@ -232,14 +236,24 @@ int CPlusMinus::PROCError(int Er, const char *a) {
 		FLst=NULL;
 		}*/
 	// NON dovremmo uscire al primo errore... forse
+	//
 	bExit=1;
+	// per gestire la valanga di errori, fare poi così:
+	//1. Panic-Mode Recovery (La tecnica dei "Punti di Ancoraggio", cercare ; (fine istruzione) o } (fine blocco scope) o ) (fine lista parametri)
+	//2. Flag di Suppressione (panic_mode / Suppressed Errors) dopo il primo errore e fino a resync
+	//3. Il "Soffitto" degli Errori (Error Limit)
+	//4. Bilanciamento delle Parentesi (Brace Matching Tracking)
 
-	numErrors++;
-	if(myOutput) {
-		char *p=(LPSTR)GlobalAlloc(GPTR,256);
-		_tcscpy(p,errBuf);
-		myOutput->PostMessage(WM_ADDTEXT,1,(LPARAM)p);
+	if(!panicMode) {
+		numErrors++;
+		if(myOutput) {
+			char *p=(LPSTR)GlobalAlloc(GPTR,256);
+			_tcscpy(p,errBuf);
+			myOutput->PostMessage(WM_ADDTEXT,1,(LPARAM)p);
+			}
 		}
+	else	
+		panicMode=TRUE;
 //	throw; 
   return 0;
   }

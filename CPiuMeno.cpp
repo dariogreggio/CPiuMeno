@@ -2485,7 +2485,6 @@ void CPiuMenoApp::StopFileMonitoring() {
 	}
 
 // --- Funzioni Thread-Safe per registrare e rimuovere file ---
-
 void CPiuMenoApp::RegisterMonitoredFile(LPCTSTR lpszPath, HWND hWndView, FILETIME ftLastWrite) {
   CSingleLock lock(&m_csMonitoredFiles, TRUE);
 
@@ -2505,9 +2504,8 @@ void CPiuMenoApp::RegisterMonitoredFile(LPCTSTR lpszPath, HWND hWndView, FILETIM
   m_arrMonitoredFiles.Add(item);
 
   // Se è il primo file registrato, avvia il thread se non era attivo
-  if(!m_pMonThread) {
+  if(!m_pMonThread)
     StartFileMonitoring();
-    }
 	}
 
 void CPiuMenoApp::UnregisterMonitoredFile(HWND hWndView) {
@@ -2559,7 +2557,8 @@ UINT AFX_CDECL CPiuMenoApp::GlobalFileMonTask(LPVOID pParam) {
 
 						// Invia il messaggio in asincrono alla Vista interessata
 						::PostMessage(file.hWndView, WM_MY_FILE_CHANGED, 0, 0);
-						}
+// Nel task di monitor, prima del PostMessage
+TRACE(_T("Posting to HWND %p  Path = %s\n"), file.hWndView, file.strPath);						}
 					}
 				}
 			}

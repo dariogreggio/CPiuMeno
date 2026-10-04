@@ -143,6 +143,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 	friend class CPiuMenoView;
+	friend class CChildFrame;
 	};
 
 /////////////////////////////////////////////////////////////////////////////

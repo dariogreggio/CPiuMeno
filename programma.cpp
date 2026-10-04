@@ -1,6 +1,8 @@
-// test_base.cpp - File di test per il Transpiler C++ -> C
+//test_base.cpp - File di test per il Transpiler C++ -> C
 
-int ciao(int a,char b=7);
+int pippo(int a,char c) { return 1; }
+int ciao(int a,char b=7,int c=9);
+float ff;
 class Shape;		// 
 
 // Struct/Classe semplice con incapsulamento e costruttore
@@ -14,8 +16,8 @@ private:
     int y;
 
 public:
-	static  /*void*/ muori() {
-		return 3;
+	static  void muori() {
+		return ;
 		}
 	int crepa() {
 		return 666;
@@ -66,13 +68,18 @@ public:
 public:
 	Point(char *s) {
 		}
-	Point(char *s) {
+	Point(char **s) {
 		}
-	Point(int *z) {
+	Point(int z) {
 		}
-	int scala(int n) {		// non va senza tipo di ritorno e se solo prototipo e/o senza var
+	Point(float l);
+	~Point();
+	int scala(int n) {		// (non va senza tipo di ritorno e se solo prototipo e/o senza var
 	return 1;
 		}
+	void scala(char *s) ;
+	void /*Point::*/Move(int h);		// deve accettare classe e :: ev errore se diversa
+
 
     // Metodo semplice (richiede il passaggio esplicito di 'this' in C)
     void move(int dx, int dy) {
@@ -81,8 +88,11 @@ public:
 		}
 	};
 
-Point::Point(int h) {
-		}
+void Point::Move(int h) {
+	}
+//void Point::Movez(int h);
+//int Point::Point(float g) {	return 5; }
+		
 
 #if 0
 // Funzione che accetta un Riferimento C++ (&)
@@ -104,7 +114,7 @@ CULO w;
 //SHAPE glShape;	// (NON dà errore alloca SHAPE!
 class Shape glShape;
 
-int ciao(int a,int b=7) {
+int ciao(int a,int b,int c) {
 	while(a--)
 		b++;
 	return b;
@@ -113,7 +123,7 @@ int ciao(int a,int b=7) {
 // Main di test
 int main(int a) {
 	short int y;
-struct CULO v;
+	struct CULO v;
 
 w.a=3;
 y=a;
@@ -148,7 +158,7 @@ pt.crepa();
 
 #endif
 
-	ciao(3); ciao(15,17);
+	ciao(3); ciao(15,17); ciao(1,2);
 	if(y==2)
 		y=8;
 

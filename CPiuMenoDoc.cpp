@@ -72,7 +72,9 @@ BOOL CPiuMenoDoc::OnOpenDocument(LPCTSTR lpszPathName) {
 
 	if(!CExRichDocument::OnOpenDocument(lpszPathName))
 		return FALSE;
-	
+
+	CWnd* pChildFrame = w->GetParentFrame();
+
 //	CStringEx S,S1;
 //	S.SplitPath(lpszPathName,5);
 
@@ -84,33 +86,23 @@ BOOL CPiuMenoDoc::OnOpenDocument(LPCTSTR lpszPathName) {
 	GetPrivateProfileString(IDS_COORDINATECHILD,myBuf,32);
 	if(*myBuf) {
 		sscanf(myBuf,"%d,%d,%d,%d",&rc.left,&rc.top,&rc.right,&rc.bottom);	// sono coord. client rispetto alla MDIFRAME madre della mia ChildFrame
-		if(!IsRectEmpty(&rc))
-//			rc.left-=4;		// (per motivi ignoti (credo sia colpa della toolbar)...
-//			rc.right+=4;
-//			rc.top-=19+4;		// 
-//			rc.bottom+=4;
-//			rc.left=10; rc.right=400;
-//			rc.top=10; rc.bottom=200;
-//			w->GetParent()->GetParent()->SetWindowPos(NULL,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER);
-			// DUE GetParent perche' c'e' Splitter!!
-			w->GetParent()->GetParent()->SetWindowPos(NULL,rc.left -(215-30),rc.top+6,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER);
-
-		/* DOPO windowplacement, v. sopra
-		CWnd* pChildFrame = pView->GetParentFrame();
-        if(pChildFrame ) {
-            // Applichiamo le coordinate direttamente alla Child Frame.
-            // Essendo figlia dell'MDIClient, si posizionerà al millimetro!
-            pChildFrame->SetWindowPos(
-                NULL, 
-                nLeft, 
-                nTop, 
-                nWidth, 
-                nHeight, 
-                SWP_NOZORDER | SWP_NOACTIVATE
-            );
-        }*/
+		if(!IsRectEmpty(&rc)) {
+      if(pChildFrame ) {
+        pChildFrame->SetWindowPos(NULL, 
+          rc.left, rc.top, 
+          rc.right-rc.left, rc.bottom- rc.top, 
+          SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+			}
 
 		}
+
+	WIN32_FILE_ATTRIBUTE_DATA wfd;
+	if(GetFileAttributesEx(lpszPathName, GetFileExInfoStandard, &wfd)) {
+		// Registra la finestra corrente presso il monitor globale
+		theApp.RegisterMonitoredFile(lpszPathName, pChildFrame->m_hWnd, wfd.ftLastWriteTime);
+		}
+		
 
 //	          m_bookmarks.InsertAt(0, 2); // PROVA
 	//          m_breakpoints.InsertAt(0, 5); // PROVA
@@ -155,9 +147,9 @@ BOOL CPiuMenoDoc::OnSaveDocument(LPCTSTR lpszPathName) {
 
 void CPiuMenoDoc::OnCloseDocument() {
 	CString S,S1;
-	RECT rc,rc2;
 	char myBuf[64];
 	CPiuMenoView *w=(CPiuMenoView *)getView();
+	CWnd* pChildFrame = w->GetParentFrame();
 
 	theApp.SaveProjectSection(theApp.nomeProgetto,this);		// per i segnalibri
 
@@ -165,7 +157,6 @@ void CPiuMenoDoc::OnCloseDocument() {
 	strcpy(myPrfSection,(LPCTSTR)GetTitle());
 
 	if(w) {		// in chiusura o se file non trovato!
-		w->GetWindowPos(&rc);
 		CWnd* pFrame = w->GetParentFrame();
     if(pFrame) {
 			// 3. Otteniamo posizione e stato (Normal, Minimized, Maximized)
@@ -177,15 +168,17 @@ void CPiuMenoDoc::OnCloseDocument() {
 				// wp.showCmd contiene lo stato (SW_SHOWMAXIMIZED, SW_SHOWNORMAL, ecc.)
       
 				// Salvi queste coordinate nel file di progetto!
+				S.LoadString(IDS_OPZIONI);
+				S1.LoadString(IDS_COORDINATECHILD);
+				wsprintf(myBuf,"%d,%d,%d,%d",wp.rcNormalPosition.left,wp.rcNormalPosition.top,
+					wp.rcNormalPosition.right,wp.rcNormalPosition.bottom);
+				theApp. /*prStore->*/ WritePrivateProfileString(myPrfSection,S1,myBuf);
 				}
 			}
-		S.LoadString(IDS_OPZIONI);
-		S1.LoadString(IDS_COORDINATECHILD);
-		wsprintf(myBuf,"%d,%d,%d,%d",rc.left,rc.top,rc.right,rc.bottom);
-		theApp. /*prStore->*/ WritePrivateProfileString(myPrfSection,S1,myBuf);
 		}
 
 //	SaveState(m_nDocType);
+	theApp.UnregisterMonitoredFile(pChildFrame->m_hWnd);
 
 	CExRichDocument::OnCloseDocument();
 	}

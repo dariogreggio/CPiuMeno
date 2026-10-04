@@ -1,0 +1,196 @@
+pippo: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                               a       param            int         4      0                 -       
+                               c       param           char         1      0                 -       
+
+
+Shape_printId__: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+
+
+Shape_muori__: variabili locali
+
+
+Shape_crepa__: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+
+
+Shape_ctor__ii: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                          startX       param            int         4      0                 -       
+                          startY       param            int         4      0                 -       
+
+
+Shape_ctor__: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+
+
+Shape_dtor__: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+
+
+Shape_print__: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+
+
+Shape_print__i: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                      prefixCode       param            int         4      0                 -       
+
+
+Shape_getX__: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+
+
+Point_ctor__Pc: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                               s       param         pointer        4      0                 -       
+
+
+Point_ctor__PPc: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                               s       param         pointer        4      0                 -       
+
+
+Point_ctor__i: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                               z       param            int         4      0                 -       
+
+
+Point_scala__i: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                               n       param            int         4      0                 -       
+
+
+Point_move__ii: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                              dx       param            int         4      0                 -       
+                              dy       param            int         4      0                 -       
+
+
+Point_Move__i: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                            this       param         pointer        4      0                 -       
+                               h       param            int         4      0                 -       
+
+
+refTest: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                               p       param       reference        4      0                 -       
+                          factor       param            int         4      0                 -       
+
+
+ciao: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                               a       param            int         4      0                 -       
+                               b       param            int         4      0                 -       
+                               c       param            int         4      0                 -       
+
+
+main: variabili locali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                               a       param            int         4      0                 -       
+                               y       param          short         2      0                 -       
+                               v       param    struct/union       12      0                 -       		CULO
+                              pt       param           class        4      0                 -       		Point
+                             pt2       param           class        4      0                 -       		Point
+                              sh       param           class        4      0                 -       		Shape
+                          finalX       param            int         4      0                 -       
+
+
+Variabili globali
+
+                            Nome    Classe            Tipo      Dim.Offset/Registro    Vis.         Tag
+
+                           pippo      global        function      4      ***                 -       
+                            ciao      global        function      4      ***                 -       
+                              ff      global           float        4    ***                 -       
+                              id      member            int         4    ***             public    		(di:Shape)
+                 Shape_printId__      member        function      0      ***             public    		(di:Shape)
+                               x      member            int         4    ***             private   		(di:Shape)
+                               y      member            int         4    ***             private   		(di:Shape)
+                   Shape_muori__  st. member        function      0      ***             public    		(di:Shape)
+                   Shape_crepa__      member        function      4      ***             public    		(di:Shape)
+                  Shape_ctor__ii      member        function      0      ***             public    		(di:Shape)
+                    Shape_ctor__      member        function      0      ***             public    		(di:Shape)
+                    Shape_dtor__      member        function      0      ***             public    		(di:Shape)
+                   Shape_print__      member        function      0      ***             public    		(di:Shape)
+                  Shape_print__i      member        function      0      ***             public    		(di:Shape)
+                    Shape_getX__      member        function      4      ***             public    		(di:Shape)
+                              aa      member            int         4    ***             private   		(di:Dario)
+                      Dario_ctor      member        function      0      ***             private   		(di:Dario)
+                      Dario_dtor      member        function      0      ***             private   		(di:Dario)
+                               t      member          short         2    ***             public    		(di:Point)
+                  Point_ctor__Pc      member        function      0      ***             public    		(di:Point)
+                 Point_ctor__PPc      member        function      0      ***             public    		(di:Point)
+                   Point_ctor__i      member        function      0      ***             public    		(di:Point)
+                   Point_ctor__F      member        function      0      ***             public    		(di:Point)
+                    Point_dtor__      member        function      0      ***             public    		(di:Point)
+                  Point_scala__i      member        function      4      ***             public    		(di:Point)
+                 Point_scala__Pc      member        function      0      ***             public    		(di:Point)
+                   Point_Move__i      member        function      0      ***             public    		(di:Point)
+                  Point_move__ii      member        function      0      ***             public    		(di:Point)
+                   Point_Move__i      member        function      0      ***             public    		(di:Point)
+                         refTest      global        function      0      ***                 -       
+                               a      member            int         4    ***             public    		(di:CULO)
+                               b      member            int         4    ***             public    		(di:CULO)
+                               c      member            int         4    ***             public    		(di:CULO)
+                               w      global    struct/union        4    ***                 -       		CULO
+                         glShape      global           class       20    ***                 -       
+                            main      global        function      4      ***                 -       
+
+Oggetti aggregati
+                           Shape 
+                           Dario 
+                           Point 
+                            CULO 
+

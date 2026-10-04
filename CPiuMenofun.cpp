@@ -294,12 +294,14 @@ rifo_defparm:
 
 char *CPlusMinus::getDecor(char *decor,O_TYPE Type, O_SIZE Size, O_DIM dim, struct TAGS *tag) {
 	char *chp=decor;
+	int8_t lp;
 
-	if(Type & VARTYPE_IS_POINTER)
+	lp = Type & VARTYPE_IS_POINTER;
+	while(lp--)
 		*chp++='P';
 	if(Type & VARTYPE_FLOAT)
 		*chp++='F';
-	else if(Type & (VARTYPE_UNION | VARTYPE_STRUCT)) {
+	else if(Type & (VARTYPE_UNION | VARTYPE_STRUCT | VARTYPE_CLASS)) {
 		_tcscat(chp,tag->label);
 		}
 	else {
@@ -329,6 +331,7 @@ Costante (const): prefisso K*/
 	}
 
 int CPlusMinus::collectParmList(char *decor) {// questa raccoglie i tipi (mangling) da una chiamata a funzione
+	// entriamo DOPO la parentesi e usciamo PRIMA della parentesi
 	int totParm;
   struct OPERAND R;
   union STR_LONG RCost;
@@ -344,7 +347,7 @@ int CPlusMinus::collectParmList(char *decor) {// questa raccoglie i tipi (mangli
 
 	totParm=0;
 
-	*decor=0;
+	//*decor=0;
 	*outbuf=0;
 
   if(*FNLA(MyBuf) != ')') {
@@ -355,22 +358,20 @@ int CPlusMinus::collectParmList(char *decor) {// questa raccoglie i tipi (mangli
 			R.var=&RPtr;
 			R.cost=&RCost;
 
-
 		  i=0;
 		  FNRev(outbuf,14,&i,Clabel,&R);
-
 
 		  FNGetMemSize(R.type,R.size,NULL/*dim*/,1);
 
 			_tcscat(decor,getDecor(ch,R.type,R.size,NULL/*dim*/,R.tag));
 
-
 			FNLO(MyBuf);          
 			if((*MyBuf != ',') && (*MyBuf != ')')) 
 				PROCError(2059,MyBuf);
+			if(*MyBuf == ')') 
+				FIn->unget(')');
 
 			totParm++;
-
 
 		  } while(*MyBuf != ')');
 
@@ -379,10 +380,11 @@ int CPlusMinus::collectParmList(char *decor) {// questa raccoglie i tipi (mangli
 	return totParm;
 	}
 
-int CPlusMinus::collectTypeList(char *decor) {  // questa raccoglie i tipi (mangling) da un prototipo o ddefinizione
+int CPlusMinus::collectTypeList(char *decor) {  // questa raccoglie i tipi (mangling) da un prototipo o definizione
+	// entriamo DOPO la parentesi e usciamo PRIMA della parentesi
 	int totParm;
 	short int i;
-  char Clabel[32],MyBuf[128];
+  char MyBuf[128];
 	char ch[64];
 	char outbuf[256];
 	O_DIM dim;
@@ -394,15 +396,17 @@ int CPlusMinus::collectTypeList(char *decor) {  // questa raccoglie i tipi (mang
 			  
 	totParm=0;
 
-	*decor=0;
+//	*decor=0;
 	*outbuf=0;
 
   if(*FNLA(MyBuf) != ')') {
-		t=FIn->GetPosition();
 
 		do {
 
-		  i=0;
+			t=FIn->GetPosition();
+			FNLO(MyBuf);
+//			t=FIn->GetPosition();
+	//		FIn->RestorePosition(t2);
 
 			Size=INT_SIZE;
 			Type=VARTYPE_PLAIN_INT;
@@ -412,15 +416,17 @@ int CPlusMinus::collectTypeList(char *decor) {  // questa raccoglie i tipi (mang
 
 			_tcscat(decor,getDecor(ch,Type,Size,dim,tag));
 
-
-			FNLO(MyBuf);          
+			do {
+				FNLO(MyBuf);
+				} while(iscsym(*MyBuf));
 			if((*MyBuf != ',') && (*MyBuf != ')')) 
 				PROCError(2059,MyBuf);
+			if(*MyBuf == ')') 
+				FIn->unget(')');
 
 			totParm++;
 
-
-		  } while(*MyBuf != ')');
+		  } while(*MyBuf == ',');
 
 		}
 

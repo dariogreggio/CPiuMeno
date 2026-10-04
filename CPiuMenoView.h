@@ -113,7 +113,6 @@ public:
 
 	CString GetWordAtPoint(CPoint ptClient);
 	void OnOpenIncludeFile();
-	afx_msg LRESULT OnFileChangedExternally(WPARAM, LPARAM);
 
 // Implementation
 public:

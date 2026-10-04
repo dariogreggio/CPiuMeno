@@ -764,6 +764,7 @@ rifo_struct:
 									if(*FNLA(MyBuf) == '(') {
 										long tt=FIn->GetPosition();
 										PROCCheck('(');
+										*MyBuf1=0;
 										collectParmList(MyBuf1);
 										FIn->RestorePosition(tt);
 //							__line__=ol;
@@ -873,7 +874,7 @@ rifo_inherit2:
 //											_tcscpy(LastOut->rem,"ofs ");
 	//										_tcscat(LastOut->rem,R.var->name);
 											}
-										PROCWarn(1003,"struct nidificata");
+										PROCWarn(2000,"struct nidificata");
 										i++;
 										goto rifo_struct;
 										}			// seguono ancora membri

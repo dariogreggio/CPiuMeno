@@ -319,7 +319,7 @@ int CPlusMinus::subGetType(O_TYPE *t, O_SIZE *s, O_DIM dim, long TT) {
     case ':':
 			if(isdigit(*FNLA(MyBuf))) {
 				*t |= VARTYPE_BITFIELD;
-				PROCWarn(1003,"bitfield");		// 
+				PROCWarn(2000,"bitfield");		// 
 				}
 			else
 //				OT=FIn->GetPosition();
@@ -365,6 +365,8 @@ rifo:
     else
       T=VARTYPE_CLASS;
     *tag=FNAllocAggr(T==VARTYPE_CLASS ? 2 : (T==VARTYPE_STRUCT ? 1 : 0));           // alloca tutta la class o struct o union (was: legge il nome o ne crea uno, poi è pronto per i membri
+		_tcscat(outbuf," ");
+		_tcscat(outbuf,(*tag)->label);
 
 //#pragma warning		fare magari come in ASsembler, i membri delle struct metterli qua e non in VARS  2025
 
@@ -548,12 +550,56 @@ rifo_attr:
 		FIn->RestorePosition(OT);
 		__line__=ol;
 
-    if(*FNLA(AS)=='&') {
+    FNLA(AS);
+    if(*AS=='&') {
 			T |= VARTYPE_IS_REFERENCE;		// occhio anche VARTYPE_RVALUE_REF, gestire
 			*t |= VARTYPE_IS_REFERENCE;		// occhio anche VARTYPE_RVALUE_REF, gestire
 	    FNLO(AS);
 			_tcscat(outbuf," ");
 			_tcscat(outbuf,AS);
+			}
+/* no qua è sbagliato		else if(!InBlock && (*tag=FNCercaAggr(AS,FALSE))) {		// questo è per la dichiarazioni di robe delle classi al livello esterno
+			PROCCheck("::");		// obbligatorio dunque!
+			return 0;
+			}*/
+    else {
+      long l2=FIn->GetPosition();
+			FNLO(AS);
+			FNLA(MyBuf);
+
+			if(!_tcscmp(MyBuf,"::")) {
+				PROCCheck("::");
+	      OT=FIn->GetPosition();
+				FNLO(MyBuf);
+				_tcscat(outbuf," ");
+				_tcscat(outbuf,AS);
+				_tcscat(outbuf,"::");
+				_tcscat(outbuf,MyBuf);
+	//			goto was_class_static;
+//				OT=TT;
+
+		    FNLA(AS);
+				if(*AS=='(') {		// posono esserci asterischi interni, o la ~ ... finire
+					T |= VARTYPE_FUNC;
+					}
+				else if(*AS=='~') {		// 
+					}
+				else if(*AS=='*') {		// 
+					T |= VARTYPE_IS_POINTER;
+					}
+
+//					subGetType(t, s, dim, TT);		// eventualmente
+				*t = T;
+
+				FIn->RestorePosition(l2);
+				__line__=ol;
+
+				return 1;
+
+				}
+			else
+				FIn->RestorePosition(l2);
+
 			}
 
     J=0;
@@ -821,7 +867,7 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 	uint32_t attrib=0;
 	int i;
   char MyBuf[sizeof(union STR_LONG)],TS[64],AS[64];
-	char decor[128],outbuf[128];
+	char decor[128],outbuf[256];
   long OT;
   struct VARS *V;
   struct TAGS *C,*tag;
@@ -885,9 +931,9 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
   else {
     C=subAllocTag(FNGetLabel(MyBuf,3),type); 
     PROCCheck('{');
+		wsprintf(MyBuf,"%s %s {",type==0 ? "union " : "struct ",C->label);
+		PROCOper(LINE_TYPE_DATA_DEF_CONT,MyBuf);
     }
-	wsprintf(MyBuf,"%s %s {",type==0 ? "union " : "struct ",C->label);
-  PROCOper(LINE_TYPE_DATA_DEF_CONT,MyBuf);
 	if(C->parent) {
 		wsprintf(MyBuf,"\tstruct %s __base;",C->parent->label,"class");
 		PROCOper(LINE_TYPE_DATA_DEF,MyBuf);
@@ -965,10 +1011,21 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 					PROCError(2523,TS);
 				FIn->RestorePosition(OT);
 				}
+			else if(FNIsType(TS) == -1) {
+				PROCError(2146,TS);
+				break; //continue;		
+				}
+
+			// UNIRE con la dichiarazione al livello esterno in IsDecl!
+
 			// credo che se ctor o dtor questo si possa saltare... prova!
-			PROCGetType(outbuf,&t,&s,&tag,dim,&attrib,OT);
+//			if(!is_ctor && !is_dtor)
+				PROCGetType(outbuf,&t,&s,&tag,dim,&attrib,OT);
+	//		else
+		//		FIn->RestorePosition(OT);
 
 			if(t & VARTYPE_FUNC) {
+				char funcType[128];
 //				_tcscpy(AS,C->label);
 				if(is_ctor)
 					_tcscpy(decor,ctor);
@@ -987,36 +1044,52 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 // NO, c'è funzione!					t=TYPE_NULL;
 					}
 
-				/* FINIRE CONTROLLO SE c'è già!
-				collectTypeList(MyBuf);
-				V=FNCercaVar(TS,FALSE);
-				if(V)
-					PROCError(2086,"ctor");
-				else {
-				}*/
-
-
-				V=PROCDclVar(outbuf,classe,0,t,s,C,dim,attrib,FALSE,decor);
-
-				if(is_ctor && C->parent) {		// 
-					_tcscpy(AS,C->parent->label);
-					_tcscat(AS,ctor);
-					wsprintf(TS,"(%s*)&this->__base",C->parent->label);
-					PROCOper(LINE_TYPE_CALL,AS,TS,NULL,"chiamo padre",LINE_IS_NORMAL);
+				_tcscpy(MyBuf,C->label);
+				OT=FIn->GetPosition();
+				if(!is_ctor && !is_dtor)
+					_tcscpy(funcType,TS);
+				FNLO(TS);
+				if(is_ctor || is_dtor) {
+					_tcscat(MyBuf,decor);
+					*funcType=*outbuf=0;
 					}
-				is_ctor=FALSE; is_dtor=FALSE;
+				else {
+					_tcscat(MyBuf,"_");
+					_tcscat(MyBuf,TS);
+					}
+				_tcscat(MyBuf,"__");
+//				FIn->RestorePosition(OT);
+				PROCCheck('(');
+				collectTypeList(MyBuf);
+				V=FNCercaVar(MyBuf,FALSE);		// perché in teoria DclVar fa il controllo se esiste già, ma non conosce ancora il mangling..
+//				__line__=ol;
+				if(V && V->type & VARTYPE_FUNC_BODY)
+					PROCError(2086,MyBuf);
+				else {
 
-/*				if(classe!=CLASSE_MEMBER_STATIC)
-					wsprintf(MyBuf,"%s* this,%s",C->label, outbuf);
-				else
-					wsprintf(MyBuf,"%s",outbuf);*/
-				PROCOper(LINE_TYPE_FUNCTION_DECLARATION,NULL,V->name,outbuf,NULL,LINE_IS_NORMAL);
-
-				*decor=0;
-				if(*FNLA(TS) == '{') {
-					PROCCheck('{');
+				FNLO(TS);
+				FNLA(TS);
+				if(*TS == '{') {
+					FIn->RestorePosition(OT);
 					Declaring=TRUE;
 
+					V=PROCDclVar(outbuf,classe,0,t,s,C,dim,attrib,FALSE,decor);
+
+					if(is_ctor && C->parent) {		// 
+						_tcscpy(AS,C->parent->label);
+						_tcscat(AS,ctor);
+						wsprintf(TS,"(%s*)&this->__base",C->parent->label);
+						PROCOper(LINE_TYPE_CALL,AS,TS,NULL,"chiamo padre",LINE_IS_NORMAL);
+						}
+					is_ctor=FALSE; is_dtor=FALSE;
+
+	/*				if(classe!=CLASSE_MEMBER_STATIC)
+						wsprintf(MyBuf,"%s* this,%s",C->label, outbuf);
+					else
+						wsprintf(MyBuf,"%s",outbuf);*/
+					PROCOper(LINE_TYPE_FUNCTION_DECLARATION,funcType,V->name,outbuf,NULL,LINE_IS_NORMAL);
+
+					PROCCheck('{');
 					PROCBlock();
 					if(*FNLA(TS)=='}') {
 						PROCCheck('}');
@@ -1024,8 +1097,15 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 						PROCOper(LINE_TYPE_DATA_DEF,MyBuf);
 						goto fine_class;
 						}
-					continue;
 					}
+				else if(*TS == ';') {
+					PROCCheck(';');
+					V=PROCAllocVar(MyBuf,VARTYPE_FUNC/*TYPE_NULL*/,CLASSE_MEMBER,0,SIZE_NULL,C,NULL);
+					is_ctor=FALSE; is_dtor=FALSE;
+					}
+				*decor=0;
+				continue;
+				}
 
 				}
 			else {
@@ -1156,7 +1236,7 @@ fine_class:
 		if(!i) {	// se non c'è, lo creo
 			_tcscpy(AS,C->label);		// il distruttore invece sempre, dice
 			_tcscat(AS,dtor);
-			V=PROCAllocVar(AS,VARTYPE_FUNC | VARTYPE_FUNC_BODY/*TYPE_NULL*/,CLASSE_MEMBER,0,SIZE_NULL,NULL,NULL);
+			V=PROCAllocVar(AS,VARTYPE_FUNC | VARTYPE_FUNC_BODY/*TYPE_NULL*/,CLASSE_MEMBER,0,SIZE_NULL,C,NULL);
 			V->isInTag=C;
 			// e creare funzione vuota!
 			_tcscpy(TS,C->label);

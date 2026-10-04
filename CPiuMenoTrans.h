@@ -233,7 +233,7 @@ struct VARS {
   struct VARS *next;
   };
 
-struct VARS2 {
+struct VARS2 {		// usata da enum
   uint32_t value;
   O_TYPE type;
   O_SIZE size;
@@ -461,7 +461,7 @@ protected:
 	COutputFile *FLst,*FErr;
 	static struct ERRORE Errs[];
 	static char *dtor,*ctor;
-	int Warning;
+	int8_t Warning;
 //  struct LINE *RootOut,*LastOut;
 	struct VARS *Var;
 	struct VARS *LVars;   // root, used, last
@@ -510,6 +510,7 @@ protected:
 	static struct TIPI Types[MAX_TIPI];
 	static struct OPERANDO Op[];
 	uint16_t numErrors,numWarnings;
+	bool panicMode;		// per gestire valanga di errori
 
 // Operations
 public:

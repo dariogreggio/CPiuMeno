@@ -62,7 +62,6 @@ BEGIN_MESSAGE_MAP(CPiuMenoView, CRichEditView)
   ON_COMMAND(ID_EDIT_REPEAT, OnEditTrovaselezione)        // Il tuo Ctrl+F3
   ON_REGISTERED_MESSAGE(WM_FINDREPLACE, OnFindReplaceCmd)  // Messaggi dalla Dialog
 	ON_COMMAND(ID_OPEN_INCLUDE_FILE, OnOpenIncludeFile)
-	ON_MESSAGE(WM_MY_FILE_CHANGED, OnFileChangedExternally)
 	//ON_EN_CHANGE(AFX_IDW_PANE_FIRST, OnEnChange)
 	ON_CONTROL_REFLECT(EN_CHANGE, OnEnChange)
 END_MESSAGE_MAP()
@@ -306,8 +305,6 @@ void CPiuMenoView::OnDestroy() {
   COleClientItem* pActiveItem = GetDocument()->
                GetInPlaceActiveItem(this); //If OnDestroy() were still up there, the app would CRASH here!
 
-	theApp.UnregisterMonitoredFile(m_hWnd);
-
   if(pActiveItem != NULL && pActiveItem->GetActiveView() == this) {
     pActiveItem->Deactivate();
     ASSERT(GetDocument()->GetInPlaceActiveItem(this) == NULL);
@@ -430,12 +427,7 @@ void CPiuMenoView::OnInitialUpdate() {
 	if(!theApp.nomeProgetto.IsEmpty())
 		theApp.LoadProject(theApp.nomeProgetto,pDoc);
 
-	WIN32_FILE_ATTRIBUTE_DATA wfd;
-  if (GetFileAttributesEx(pDoc->GetPathName(), GetFileExInfoStandard, &wfd)) {
-    // Registra la finestra corrente presso il monitor globale
-    theApp.RegisterMonitoredFile(pDoc->GetPathName(), m_hWnd, wfd.ftLastWriteTime);
-    }
-				
+			
 	//SetFocus();
 	GetParentFrame()->SetTitle(pDoc->GetTitle());
 	((CMainFrame*)theApp.m_pMainWnd)->MDIActivate(GetParentFrame());
@@ -546,7 +538,7 @@ void CPiuMenoView::OnEditTrovaselezione() {
   ctrl.GetSel(cr);
 
 	// 1. Se il cursore è fermo, trova i confini della parola rispettando i margini di riga
-  if (cr.cpMin == cr.cpMax)    {
+  if(cr.cpMin == cr.cpMax)    {
     long nPos = cr.cpMin;
 
     // Ricaviamo l'indice del primo carattere della riga corrente
@@ -555,7 +547,7 @@ void CPiuMenoView::OnEditTrovaselezione() {
     long nEnd = 0;
 
 // Gestione speciale per INIZIO FILE (Posizione 0)
-    if (nPos == 0)        {
+    if(nPos == 0)        {
       nStart = 0;
       nEnd = (long)ctrl.SendMessage(EM_FINDWORDBREAK, WB_RIGHT, 0);
 
@@ -1038,7 +1030,7 @@ void CPiuMenoView::HighlightVisibleRange() {
 
 // (Impostare a 0 impedisce al RichEdit di registrare le modifiche di formattazione)
   edit.SendMessage(EM_SETUNDOLIMIT, 0, 0);
-	DWORD dwOldEventMask = edit.SetEventMask(edit.GetEventMask() & ~ENM_CHANGE);
+	DWORD dwOldEventMask = edit.SetEventMask(edit.GetEventMask() & ~(ENM_CHANGE | ENM_NONE));
 
 	// 1. Blocco del Rendering visivo
   edit.SetRedraw(FALSE);
@@ -1048,6 +1040,7 @@ void CPiuMenoView::HighlightVisibleRange() {
   // 2. Salvataggio della selezione corrente e dello scroll per ripristinarli dopo
   CHARRANGE crOriginal;
   edit.GetSel(crOriginal);
+//	::SendMessage(edit.m_hWnd, EM_EXGETSEL, 0, (LPARAM)&crOriginal);
   
   int nFirstVisibleLine = edit.GetFirstVisibleLine();
 
@@ -1061,14 +1054,15 @@ void CPiuMenoView::HighlightVisibleRange() {
 
 // 3. Calcolo dell'intervallo di caratteri VISIBILI
 	int nStartChar = edit.LineIndex(nFirstVisibleLine);
-	if (nStartChar == -1) nStartChar = 0;
+	if(nStartChar == -1) 
+		nStartChar = 0;
 
 	// Prendiamo qualche riga in più di margine (buffer di sicurezza)
 	int nLastVisibleLine = nFirstVisibleLine + GetVisibleLineCount() + 2; 
 	int nTotalLines = edit.GetLineCount();
 
 	if(nLastVisibleLine >= nTotalLines)
-			nLastVisibleLine = nTotalLines - 1;
+		nLastVisibleLine = nTotalLines - 1;
 
 	int nLastLineStart = edit.LineIndex(nLastVisibleLine);
 	int nEndChar = edit.GetTextLength();
@@ -1124,10 +1118,11 @@ void CPiuMenoView::ParseAndApplyHighlighting(const CString& strText, int nGlobal
 
   // Tabella Parole Chiave C/C++
   static const LPCTSTR szKeywords[] = {
-    _T("if"), _T("else"), _T("for"), _T("while"), _T("return"), _T("void"),
+    _T("if"), _T("else"), _T("for"), _T("while"), _T("goto"), _T("return"), _T("void"),
     _T("int"), _T("char"), _T("float"), _T("double"), _T("struct"), _T("class"),
-		_T("protected"),_T("public"),_T("private"),_T("friend"), _T("template"),
-    _T("const"), _T("static"), _T("virtual"), _T("switch"), _T("case"), _T("typedef"), 
+		_T("protected"),_T("public"),_T("private"),_T("friend"), _T("template"), _T("operator"), 
+    _T("const"), _T("static"), _T("virtual"), _T("switch"), _T("case"), _T("break"), _T("default"), 
+		_T("typedef"), _T("new"), _T("delete"), 
 		_T("defined"), // andrebbe viola pure questa??
 		NULL
     };
@@ -1560,7 +1555,9 @@ void CPiuMenoView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) {
   else if(nChar == VK_UP || nChar == VK_DOWN || 
     nChar == VK_PRIOR || nChar == VK_NEXT || // PageUp / PageDown
     nChar == VK_HOME || nChar == VK_END) {
-		HighlightVisibleRange(); // Ricoloriamo il blocco visibile appena cambia lo scroll
+//		HighlightVisibleRange(); // Ricoloriamo il blocco visibile appena cambia lo scroll
+		PostMessage(WM_TIMER, 1, 0); // non va altrimenti perché colora PRIMA di spostare
+		//oppure usare EN_SELCHANGE, dice
     }
 
   // Per tutti gli altri tasti, lascia la gestione standard
@@ -1796,30 +1793,6 @@ void CPiuMenoView::OnOpenIncludeFile() {
   if(pDoc && !m_strSelectedInclude.IsEmpty()) {
     pDoc->OpenIncludeFile(m_strSelectedInclude);
     }
-	}
-
-LRESULT CPiuMenoView::OnFileChangedExternally(WPARAM wParam, LPARAM lParam) {
-  CPiuMenoDoc* pDoc = GetDocument();
-  if(!pDoc)
-		return 0;
-
-	if(((::GetTickCount() - pDoc->m_dwLastSelfSaveTime) > 1000) /*!pDoc->m_bIsSavingSelf*/) {
-		CString strMsg;
-		if(!theApp.AutoRicaricaFiles) {
-			strMsg.Format(_T("Il file '%s' è stato modificato all'esterno.\nRicaricarlo?"), pDoc->GetTitle());
-			if(AfxMessageBox(strMsg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
-					// Ora siamo nel thread GUI nativo, OnOpenDocument è sicuro al 100%!
-				pDoc->OnOpenDocument(pDoc->GetPathName());
-				}
-			}
-		else {
-			strMsg.Format(_T("Il file '%s' è stato modificato all'esterno, e ricaricato."), pDoc->GetTitle());
-			((CMainFrame*)theApp.m_pMainWnd)->SetStatusText(strMsg);
-			pDoc->OnOpenDocument(pDoc->GetPathName());
-			}
-		}
-
-  return 0;
 	}
 
 

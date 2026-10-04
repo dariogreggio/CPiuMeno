@@ -24,7 +24,9 @@ BEGIN_MESSAGE_MAP(CChildFrame, CMDIChildWnd)
 	//{{AFX_MSG_MAP(CChildFrame)
 	ON_WM_GETMINMAXINFO()
 	ON_WM_SIZE()
+	ON_WM_DESTROY()
 	//}}AFX_MSG_MAP
+	ON_MESSAGE(WM_MY_FILE_CHANGED, OnFileChangedExternally)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -82,7 +84,7 @@ BOOL CChildFrame::OnCreateClient(LPCREATESTRUCT lpcs,
 //  m_wndSplitter.RecalcLayout();
 
   m_wndSplitter.SetColumnInfo(0, 20 /*cr.Height()*/, 20);		// (meglio lasciar fare a onsize!
-  m_wndSplitter.SetColumnInfo(1, 400, 400);
+  m_wndSplitter.SetColumnInfo(1, 600, 40);
 
 
 	m_bInitSplitter=TRUE;
@@ -142,6 +144,76 @@ void CChildFrame::OnSize(UINT nType, int cx, int cy) {
 
 	}
 
+
+LRESULT CChildFrame::OnFileChangedExternally(WPARAM wParam, LPARAM lParam) {
+	CPiuMenoDoc *pDoc = (CPiuMenoDoc*)GetActiveDocument();
+	CPiuMenoView *pView = (CPiuMenoView*)GetActiveView();
+	CRichEditCtrl& edit = pView ->GetRichEditCtrl();
+
+  if(!pDoc)
+		return 0;
+
+	    TRACE(_T("ENTRATA HANDLER - Len = %d  HWND = %p\n"), 
+          edit.GetTextLength(), edit.GetSafeHwnd());
+			TRACE(_T("Received on this = %p\n"), GetSafeHwnd());
+
+	if(((::GetTickCount() - pDoc->m_dwLastSelfSaveTime) > 1000) /*!pDoc->m_bIsSavingSelf*/) {
+		CHARRANGE crOriginal;
+		edit.SetFocus();
+
+/*		CHARRANGE cr ;
+		edit.GetSel(cr);
+		int nFirst   = edit.GetFirstVisibleLine();
+		int nLine    = edit.LineFromChar(-1);
+		int nLen     = edit.GetTextLength();
+		int nScroll  = edit.GetScrollPos(SB_VERT);
+
+		TRACE(_T(">>> Sel=%d-%d  FirstVis=%d  LineFromChar=%d  Len=%d  Scroll=%d\n"),
+					cr.cpMin, cr.cpMax, nFirst, nLine, nLen, nScroll);*/
+
+
+		edit.GetSel(crOriginal);	// (sta merda non va...
+//		::SendMessage(edit.m_hWnd, EM_EXGETSEL, 0, (LPARAM)&crOriginal);
+  
+	  int nFirstVisibleLine = edit.GetFirstVisibleLine();
+    long nLineIndex = (long)edit.SendMessage(EM_LINEINDEX, -1, 0);
+ //   int nFirstVisible = edit.GetFirstVisibleLine();
+   // int nCurrentLine  = edit.LineFromChar(-1);          // vera linea corrente (caret)
+    // oppure: int nCurrentLine = edit.LineFromChar(crOriginal.cpMin); 
+
+	  edit.SetRedraw(FALSE);
+
+		CString strMsg;
+		if(!theApp.AutoRicaricaFiles) {
+			strMsg.Format(_T("Il file '%s' è stato modificato all'esterno.\nRicaricarlo?"), pDoc->GetTitle());
+			if(AfxMessageBox(strMsg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
+					// Ora siamo nel thread GUI nativo, OnOpenDocument è sicuro al 100%!
+				pDoc->OnOpenDocument(pDoc->GetPathName());
+				}
+			}
+		else {
+			strMsg.Format(_T("Il file '%s' è stato modificato all'esterno, e ricaricato."), pDoc->GetTitle());
+			((CMainFrame*)theApp.m_pMainWnd)->SetStatusText(strMsg);
+			pDoc->OnOpenDocument(pDoc->GetPathName());
+			}
+
+	  edit.SetSel(crOriginal);		// sebra spostarsi di uno a dx ogni volta... ma ok
+		edit.LineScroll(nFirstVisibleLine - edit.GetFirstVisibleLine());
+	  edit.SetRedraw(TRUE);
+
+		    // 3. Ripristino DOPO che il testo è stato ricaricato
+    // Prima ripristina lo scroll (altrimenti SetSel può far scorrere)
+    //int nNewFirst = edit.GetFirstVisibleLine();
+    //edit.LineScroll(nFirstVisible - nNewFirst);
+
+    // Poi la selezione (il caret torna sulla riga corretta)
+    // Se il file è più corto, SetSel viene clippato automaticamente
+    //edit.SetSel(crOriginal);
+
+		}
+
+  return 0;
+	}
 
 
 
@@ -241,4 +313,11 @@ void CMySplitterWnd::OnMouseMove(UINT nFlags, CPoint point) {
 	}
 
 
+
+
+void CChildFrame::OnDestroy() {
+	CMDIChildWnd::OnDestroy();
+	
+	theApp.UnregisterMonitoredFile(m_hWnd);
+	}
 

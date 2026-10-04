@@ -68,7 +68,7 @@ void CPlusMinus::subObj(COutputFile *FO,const char *s) {
 
 void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char *C, 
 												 const char *R, enum LINE_FLAGS flags) {
-  struct LINE *New;
+//  struct LINE *New;
   char myBuf[128];
 	COutputFile *f;
 
@@ -190,7 +190,8 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
 
         break;
 			case LINE_TYPE_FUNCTION:
-        f->printf("%s ",A ? A : "void");
+				if(A && *A)
+					f->printf("%s ",A);
 				subObj(f,B);
 				if(C)
 	        f->printf("(%s)",C);
@@ -199,7 +200,8 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
 	      f->printf(" {");
 				break;
 			case LINE_TYPE_FUNCTION_DECLARATION:
-        f->printf("%s ",A ? A : "void");
+				if(A && *A)
+					f->printf("%s ",A);
 				subObj(f,B);
 				if(C)
 	        f->printf("(%s)",C);
