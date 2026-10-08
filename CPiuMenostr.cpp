@@ -71,6 +71,7 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
 //  struct LINE *New;
   char myBuf[128];
 	COutputFile *f;
+	int i;
 
 //  myLog->print(0,"istr: %s: %s,%s (%x)\n",TEXT->opcode,TEXT->s1,TEXT->s2,TEXT->type);
     switch(type & ~LINE_TYPE_COMMENTO) {  
@@ -146,9 +147,13 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
         f->printf("%s\t",A);
 				if(B)
 					subObj(f,B);
+				if(C)
+					subObj(f,C);
 				f->put(';');
         break;
 			case LINE_TYPE_DICHIARAZIONE:
+//				for(i=0; i<InBlock; i++)
+//					f->put('\t'); 				  // prima delle istruzioni TAB
         f->printf("%s\t",A);
 				if(B)
 					subObj(f,B);
@@ -162,7 +167,8 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
 			case LINE_TYPE_JUMP:
 			case LINE_TYPE_JUMPC:
 			case LINE_TYPE_CALL:
-	      f->put('\t'); 				  // prima delle istruzioni TAB
+				for(i=0; i<InBlock; i++)
+					f->put('\t'); 				  // prima delle istruzioni TAB
         f->printf("%s(",A);
 				if(B)
 			    subObj(f,B);
@@ -171,15 +177,22 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
         break;
 			case LINE_TYPE_ISTRUZIONE:
       default:
-	      f->put('\t'); 				  // prima delle istruzioni TAB
+				for(i=0; i<InBlock; i++)
+					f->put('\t'); 				  // prima delle istruzioni TAB
         f->printf("%s",A);
 				if(B) {
 					f->put('\t');
 					subObj(f,B);
 					}
+				if(C) {
+					f->put(' ');
+					subObj(f,C);
+					}
 				f->put(';');
         break;
 			case LINE_TYPE_ISTRUZIONE_CONT:
+				for(i=0; i<InBlock; i++)
+					f->put('\t'); 				  // prima delle istruzioni TAB
         f->printf("%s",A);
 				if(B) {
 					f->put(' ');
@@ -192,6 +205,8 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
 			case LINE_TYPE_FUNCTION:
 				if(A && *A)
 					f->printf("%s ",A);
+				else
+					f->printf("void ");
 				subObj(f,B);
 				if(C)
 	        f->printf("(%s)",C);
@@ -202,14 +217,18 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
 			case LINE_TYPE_FUNCTION_DECLARATION:
 				if(A && *A)
 					f->printf("%s ",A);
+				else
+					f->printf("void ");
 				subObj(f,B);
 				if(C)
 	        f->printf("(%s)",C);
 				else
-	        f->printf("()",C);
+	        f->printf("()");
 	      f->printf(";");
 				break;
 			case LINE_TYPE_JUMPGOTO:
+				for(i=0; i<InBlock; i++)
+					f->put('\t'); 				  // prima delle istruzioni TAB
 		    f->printf("%s",A);
 	      f->put('\t');
 				if(B)

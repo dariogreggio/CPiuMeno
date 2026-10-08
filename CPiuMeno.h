@@ -12,6 +12,7 @@
 
 #define WM_ADDTEXT (WM_USER+1)
 #define WM_CLSWINDOW (WM_USER+2)
+#define WM_COMPILEDONE (WM_USER+3)
 #define WM_MY_FILE_CHANGED (WM_USER + 501)
 
 /////////////////////////////////////////////////////////////////////////////

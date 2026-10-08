@@ -10,7 +10,7 @@
 #include <ctype.h>
 
 
-int CPlusMinus::PROCUsaFun(struct VARS *V,bool isMember,const char *n) {    //
+int CPlusMinus::PROCUsaFun(char *outbuf,struct VARS *V,bool isMember,const char *n) {    //
   int I,T=0;
 	int16_t i,j;
   int totParm,prParm=0;
@@ -23,7 +23,6 @@ int CPlusMinus::PROCUsaFun(struct VARS *V,bool isMember,const char *n) {    //
   struct OPERAND R;
   union STR_LONG RCost;
 	bool parmProto;
-	char outbuf[256];
 			  
   if(debug)
     myLog->print(0,"USAFUN %x\n",V);           
@@ -68,14 +67,18 @@ int CPlusMinus::PROCUsaFun(struct VARS *V,bool isMember,const char *n) {    //
 		totParm=-1;
 	  }	
 
+//	_tcscpy(outbuf,V->name);		no, perché da fuori uso LINE_TYPE_CALL
+	//_tcscat(outbuf,"(");
+	*outbuf=0;
 	if(isMember) {
 		if(1)		// SOLO SE subclass
-			wsprintf(outbuf,"(%s*)&%s,",V->isInTag->label,n);
+			wsprintf(MyBuf,"(%s*)&%s,",V->isInTag->label,n);
 		else
-			wsprintf(outbuf,"&%s,",n);
+			wsprintf(MyBuf,"&%s,",n);
 		}
 	else
-		*outbuf=0;
+		*MyBuf=0;
+	_tcscat(outbuf,MyBuf);
   if(*FNLA(MyBuf) != ')') {
 		do {
 		  R.Q=0;
@@ -232,7 +235,7 @@ rifo_defparm:
 			if(outbuf[i] == ',') {
 				outbuf[i]=0;
 				}
-			PROCOper(LINE_TYPE_CALL,V,outbuf,NULL,LINE_IS_NORMAL);
+//			PROCOper(LINE_TYPE_CALL,V,outbuf,NULL,LINE_IS_NORMAL);		// da fuori
 			}
 		}
 
@@ -292,10 +295,118 @@ rifo_defparm:
   return 0;
   }
 
+
+int CPlusMinus::subAcquisisciParm(int *ptr32,struct VARS *V,bool is_member,bool doDeclare) {
+	// nb pulire array in entrata, specie per i void (v.
+	int totParm;
+	int *parmPtr=NULL;
+	char T[64];
+	long t;
+	int v;
+	int i,t1,f;
+	struct VARS *newvar;
+	O_TYPE Type;
+	O_SIZE Size;
+	O_DIM dim;
+	struct TAGS *tag;
+	enum VAR_CLASSES Class;
+	uint32_t attrib;
+	char nome[64],outbuf[256],MyBuf[128];
+
+	*outbuf=0;
+
+	if(!is_member)
+		*ptr32=0;		// no, per this
+	totParm=*ptr32;
+
+	FNLA(T);
+	v=FNIsClass(T);
+	if((v>=0) || (FNIsType(T) != VARTYPE_NOTYPE)) {
+
+		if(*T==')' || *T==',' /*!iscsymf(*T)*/) {			// tipo parentesi subito chiusa, o virgola - csymf solo lettere! quindi mi incasina gli '*'
+			PROCError(2055);
+			return 0 /*break*/;
+			}
+		do {
+			v=FNIsClass(T);
+			if(!_tcscmp(FNLA(T),"const"))	{	// GESTIRE! usare v. anche di là
+				FNLO(T);                 
+				}
+			if(v>=0) {
+				v &= 0xf;
+				Class=(enum VAR_CLASSES)v;
+				t=FIn->GetPosition();
+				FNLO(T);
+				}
+			else {
+				if(!(V->modif & (FUNC_MODIF_FASTCALL | FUNC_MODIF_INLINE)))
+					Class=CLASSE_AUTO;
+				else
+					Class=CLASSE_REGISTER;
+				}
+
+			Size=INT_SIZE;
+			Type=VARTYPE_PLAIN_INT;
+			tag=NULL;
+
+			f=PROCGetType(outbuf,&Type,&Size,&tag,dim,&attrib,t);
+
+			if(!Type && !Size) {		// questo è void!
+				goto void_parm;
+				}
+
+			if(doDeclare)
+				newvar=PROCDclVar(outbuf,Class,0,Type,Size,tag,dim,attrib,TRUE,NULL,NULL);
+			if(FNGetMemSize(Type,Size,0/*dim*/,0) != 0) {     // scavalco VOID, ma non void*
+				parmPtr=V->parm.ptr32;
+				i=totParm;
+				parmPtr[i*4+1]=Type;
+				parmPtr[i*4+2]=Size;
+				parmPtr[i*4+3]=0;
+
+				totParm=i+1;
+				if(totParm>20)
+					PROCError(1001,"func parm > 20");
+
+				}
+	
+void_parm:
+skip_var:
+			FNLO(T);
+			if(*T == ',') {
+				_tcscat(outbuf,T);
+				t=FIn->GetPosition();
+				FNLO(T);
+				}
+			else if(*T == '=') {
+				int *parmPtr;
+				parmPtr=V->parm.ptr32;
+				t1=FNGetConst(MyBuf,1);
+				parmPtr[i*4+3]=t1;		// defvalue, può essere costante o un membro statico o var globale o funzione/costruttore
+				parmPtr[i*4+1] |= VARTYPE_INITIALIZED;
+				goto skip_var;
+				}
+			else if(*T == ')')
+				;
+			else {
+				if(iscsymf(*T)) {		// se c'è nome di variabile, lo salto
+					goto skip_var;
+					}
+				else 
+					PROCError(2059);
+				}
+			} while(*T != ')');
+		if(parmPtr)
+			parmPtr[0]=totParm;
+		}
+	}
+
 char *CPlusMinus::getDecor(char *decor,O_TYPE Type, O_SIZE Size, O_DIM dim, struct TAGS *tag) {
 	char *chp=decor;
 	int8_t lp;
 
+	if(Type & VARTYPE_REFERENCE)
+		*chp++='R';
 	lp = Type & VARTYPE_IS_POINTER;
 	while(lp--)
 		*chp++='P';
@@ -340,6 +451,12 @@ int CPlusMinus::collectParmList(char *decor) {// questa raccoglie i tipi (mangli
   char Clabel[32],MyBuf[128];
 	char ch[64];
 	char outbuf[256];
+/*	int totParmDecl=*V->parm.ptr32;
+	int *parmPtr=parmPtr=V->parm.ptr32;
+
+	parmPtr[i*4+1]=Type;
+	parmPtr[i*4+2]=Size;
+	parmPtr[i*4+3]=0;*/
 			  
   ZeroMemory(&R,sizeof(struct OPERAND));
   ZeroMemory(&RPtr,sizeof(struct VARS));
@@ -383,7 +500,7 @@ int CPlusMinus::collectParmList(char *decor) {// questa raccoglie i tipi (mangli
 int CPlusMinus::collectTypeList(char *decor) {  // questa raccoglie i tipi (mangling) da un prototipo o definizione
 	// entriamo DOPO la parentesi e usciamo PRIMA della parentesi
 	int totParm;
-	short int i;
+	short int i,f;
   char MyBuf[128];
 	char ch[64];
 	char outbuf[256];
@@ -396,7 +513,7 @@ int CPlusMinus::collectTypeList(char *decor) {  // questa raccoglie i tipi (mang
 			  
 	totParm=0;
 
-//	*decor=0;
+	*decor=0;
 	*outbuf=0;
 
   if(*FNLA(MyBuf) != ')') {
@@ -412,13 +529,13 @@ int CPlusMinus::collectTypeList(char *decor) {  // questa raccoglie i tipi (mang
 			Type=VARTYPE_PLAIN_INT;
 			tag=NULL;
 
-			PROCGetType(outbuf,&Type,&Size,&tag,dim,&attrib,t);
+			f=PROCGetType(outbuf,&Type,&Size,&tag,dim,&attrib,t);
 
 			_tcscat(decor,getDecor(ch,Type,Size,dim,tag));
 
 			do {
 				FNLO(MyBuf);
-				} while(iscsym(*MyBuf));
+				} while(iscsym(*MyBuf) || isdigit(*MyBuf) || *MyBuf=='=');
 			if((*MyBuf != ',') && (*MyBuf != ')')) 
 				PROCError(2059,MyBuf);
 			if(*MyBuf == ')') 

@@ -273,6 +273,7 @@ BEGIN
         MENUITEM "&Sovrapponi",                 ID_WINDOW_CASCADE
         MENUITEM "&Affianca",                   ID_WINDOW_TILE_HORZ
         MENUITEM "Di&vidi",                     ID_WINDOW_SPLIT
+        MENUITEM "Chiudi",                      ID_FINESTRA_CHIUDI
         MENUITEM "&Chiudi tutte",               ID_FINESTRA_CHIUDITUTTE
     END
     POPUP "&?"
@@ -384,6 +385,8 @@ CAPTION "Trova"
 FONT 8, "MS Sans Serif"
 BEGIN
     LTEXT           "Tr&ova:",1088,5,12,28,8
+    COMBOBOX        1152,34,10,176,38,CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | 
+                    WS_TABSTOP
     CONTROL         "Solo parole &intere",1040,"Button",BS_AUTOCHECKBOX | 
                     WS_GROUP | WS_TABSTOP,5,40,100,12
     CONTROL         "Confronta &maiuscole/minuscole",1041,"Button",
@@ -394,10 +397,8 @@ BEGIN
     CONTROL         "G&iù",1057,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,179,
                     45,28,10
     DEFPUSHBUTTON   "&Trova successivo",IDOK,225,11,59,14,WS_GROUP
-    PUSHBUTTON      "Annulla",IDCANCEL,224,80,60,14
     PUSHBUTTON      "&Marca tutti",IDOK2,225,31,59,14,WS_GROUP
-    COMBOBOX        1152,34,10,176,38,CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | 
-                    WS_TABSTOP
+    PUSHBUTTON      "Annulla",IDCANCEL,224,80,60,14
 END
 
 IDD_MY_REPLACE_DIALOG DIALOG DISCARDABLE  36, 44, 270, 106

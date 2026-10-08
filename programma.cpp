@@ -1,7 +1,12 @@
 //test_base.cpp - File di test per il Transpiler C++ -> C
 
 int pippo(int a,char c) { return 1; }
+
+extern "C" {
+int minchia(int a);
+}
 int ciao(int a,char b=7,int c=9);
+
 float ff;
 class Shape;		// 
 
@@ -9,6 +14,8 @@ class Shape;		//
 class Shape {
 public:
 	int id;
+	static long id2;		// esce int?! ora è ok, int e long sono uguali :) o no??
+//	static char ch=0;		// (DARE errore anche se func
     void printId() { 		/* ... */ 		}
 
 private:
@@ -16,6 +23,7 @@ private:
     int y;
 
 public:
+	static  void muori();
 	static  void muori() {
 		return ;
 		}
@@ -26,8 +34,10 @@ public:
 
     // Costruttore con valori di default
     Shape(int startX, int startY) {
+				int z;
         x = startX;
         y = startY;
+				z=x;
     }
     Shape() {
 		x=y=0;
@@ -56,6 +66,10 @@ public:
 
 	};
 
+
+//int Shape::id2;
+int Shape::id2=3456;
+
 class Dario {
 	int aa;
 	};
@@ -70,28 +84,35 @@ public:
 		}
 	Point(char **s) {
 		}
-	Point(int z) {
-		}
+//	Point(int z) : Shape(&z) {
+	//	}
 	Point(float l);
+	Point() {}
 	~Point();
 	int scala(int n) {		// (non va senza tipo di ritorno e se solo prototipo e/o senza var
 	return 1;
 		}
 	void scala(char *s) ;
-	void /*Point::*/Move(int h);		// deve accettare classe e :: ev errore se diversa
+	void Point::Move(int h);		// deve accettare classe e :: ev errore se diversa
 
 
     // Metodo semplice (richiede il passaggio esplicito di 'this' in C)
     void move(int dx, int dy) {
+			int z;
         x += dx;
         y += dy;
+			z=y;
+			z=dx;
+//z=id2;
 		}
 	};
 
+Point::Point(float g) : Shape(/*l*/)  {	g=1.0; /*return 5;*/ }
 void Point::Move(int h) {
 	}
 //void Point::Movez(int h);
-//int Point::Point(float g) {	return 5; }
+///*int */Point::Point(float g) {	/*return 5;*/ }
+/*int */Point::~Point() {	/*return 5;*/ }
 		
 
 #if 0
@@ -112,11 +133,18 @@ int a,b,c;
 CULO w;
 
 //SHAPE glShape;	// (NON dà errore alloca SHAPE!
-class Shape glShape;
+class Shape glShape(1,1);
 
-int ciao(int a,int b,int c) {
+int ciao(int a,int b,int c=9) {
+	char *p=new char[32];
+	p=new Shape;
+	p=new char;
+	p=new class Shape;
+	p=new class Shape(10,7);
+	p=new struct CULO;
 	while(a--)
 		b++;
+	delete p;
 	return b;
 	}
 
@@ -127,11 +155,13 @@ int main(int a) {
 
 w.a=3;
 y=a;
+y=Shape::id2;
 
     // Inizializzazione oggetto (deve invocare il costruttore)
-    Point pt(10, 20);
-Point pt2;
+//    Point pt2(10, 20);
+Point pt;
 Shape sh;
+Shape sh2(10,20);
 y=2;
 y=pt.x;
 pt.print();
@@ -139,26 +169,27 @@ pt.print(1);
 Shape::muori();
 pt.muori();
     // Chiamata a metodo su oggetto
-   pt2.move(5, -2);
+   pt.move(5, -2);
    int finalX = pt.getX();
+//   finalX = pt.getX();
 
 
-y=Point::muori();
+//y=Point::muori();			// (DEVE dare errore!!
 //y=Point::crepa();
 //Point::print();
 pt.crepa();
+sh2.muori();
 
 
 //class	Point pt2(10,20);
-#if 0
-
 
     // Passaggio per riferimento
-  //  scalePoint(pt, 2);
+//    scalePoint(pt, 2);
 
-#endif
 
-	ciao(3); ciao(15,17); ciao(1,2);
+//	ciao(3); ciao(15,17); ciao(1,2);		// finire mangling con parm default!
+ciao(1,2,3);
+
 	if(y==2)
 		y=8;
 

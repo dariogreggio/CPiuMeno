@@ -148,6 +148,8 @@ protected:
 	afx_msg void OnUpdateVisualizzaFinestraprogetto(CCmdUI* pCmdUI);
 	afx_msg void OnFinestraChiuditutte();
 	afx_msg void OnUpdateFinestraChiuditutte(CCmdUI* pCmdUI);
+	afx_msg void OnFinestraChiudi();
+	afx_msg void OnUpdateFinestraChiudi(CCmdUI* pCmdUI);
 	afx_msg BOOL OnQueryEndSession();
 	afx_msg void OnTreeOpen();
 	afx_msg void OnTreeImpostazioni();
@@ -168,6 +170,7 @@ protected:
 	//}}AFX_MSG
 	afx_msg LRESULT OnAddText(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnClsWindow(WPARAM wParam, LPARAM lParam);
+	afx_msg LRESULT OnCompileDone(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnTreeDoubleClick(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnTreeRightClick(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnTreeItemExpanded(NMHDR* pNMHDR, LRESULT* pResult);

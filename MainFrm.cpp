@@ -37,6 +37,8 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_UPDATE_COMMAND_UI(ID_VISUALIZZA_FINESTRAPROGETTO, OnUpdateVisualizzaFinestraprogetto)
 	ON_COMMAND(ID_FINESTRA_CHIUDITUTTE, OnFinestraChiuditutte)
 	ON_UPDATE_COMMAND_UI(ID_FINESTRA_CHIUDITUTTE, OnUpdateFinestraChiuditutte)
+	ON_COMMAND(ID_FINESTRA_CHIUDI, OnFinestraChiudi)
+	ON_UPDATE_COMMAND_UI(ID_FINESTRA_CHIUDI, OnUpdateFinestraChiudi)
 	ON_COMMAND(ID_TREE_OPEN, OnTreeOpen)
 	ON_COMMAND(ID_TREE_IMPOSTAZIONI, OnTreeImpostazioni)
 	ON_COMMAND(ID_TREE_ESCLUDI, OnTreeEscludi)
@@ -64,6 +66,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CMDIFrameWnd)
 	ON_COMMAND(ID_DEFAULT_HELP, CMDIFrameWnd::OnHelpFinder)
 	ON_MESSAGE(WM_ADDTEXT,OnAddText)
 	ON_MESSAGE(WM_CLSWINDOW,OnClsWindow)
+	ON_MESSAGE(WM_COMPILEDONE,OnCompileDone)
 	ON_MESSAGE(WM_GOTO_OUTPUT_LINE, OnGotoOutputLine)
 	ON_COMMAND(ID_NEXT_ERROR, OnNextError)
 	ON_COMMAND(ID_PREV_ERROR, OnPrevError)
@@ -512,6 +515,21 @@ void CMainFrame::OnUpdateFinestraChiuditutte(CCmdUI* pCmdUI) {
 	
 	}
 
+void CMainFrame::OnFinestraChiudi() {
+	
+	CMDIChildWnd *pChild = MDIGetActive();
+  if(pChild) {
+    CPiuMenoDoc *pDoc = (CPiuMenoDoc*)pChild->GetActiveDocument();
+    if(pDoc)
+      // Salva se necessario e chiude tutte le viste collegate al documento
+      pDoc->OnCloseDocument(); 
+    }
+	}
+
+void CMainFrame::OnUpdateFinestraChiudi(CCmdUI* pCmdUI) {
+
+	}
+
 void CMainFrame::OnVisualizzaFinestradioutput() {
 	BOOL bVisible = m_wndOutputBar.IsWindowVisible();
 
@@ -709,6 +727,11 @@ afx_msg LRESULT CMainFrame::OnAddText(WPARAM wParam, LPARAM lParam) {
 afx_msg LRESULT CMainFrame::OnClsWindow(WPARAM wParam, LPARAM lParam) {
 	
 	Cls();
+	return 1;
+	}
+
+afx_msg LRESULT CMainFrame::OnCompileDone(WPARAM wParam, LPARAM lParam) {
+	
 	return 1;
 	}
 
@@ -994,9 +1017,13 @@ void CMainFrame::OnCompilaFile2() {	// v. anche OnCompilaFile doc
 
 	theApp.m_pMainWnd->PostMessage(WM_CLSWINDOW,0,(LPARAM)NULL);
 
+	theApp.totWarnings=theApp.totErrors=0;
 	if(!theApp.CompilaFile(pDoc->GetPathName()))
 //		AfxMessageBox("Impossibile caricare il compilatore",MB_ICONEXCLAMATION);
 ;
+
+	if(theApp.totErrors>0)		/// hmmm non va perché arrivano con PostMessage...
+		MessageBeep(MB_ICONHAND);
 
 fine:
 		;

@@ -20,12 +20,12 @@ void CPlusMinus::subEvEx(char *outbuf,uint8_t Pty, int16_t *cond, char *Clabel, 
 	    PROCReadD0(outbuf,V->var,VARTYPE_PLAIN_INT,0,*cond & VALUE_CONDITION_MASK,V->cost->l,FALSE);
 		}
   else if(V->Q == VALUE_IS_VARIABILE) {
-		if(!(V->Q & VALUE_IS_CONDITION))		// già a posto qua.. VERIFICARE!
-	    ReadVar(outbuf,V->var,VARTYPE_PLAIN_INT,0,(*cond & VALUE_CONDITION_MASK) ? TRUE : FALSE,FALSE);
+//		if(!(V->Q & VALUE_IS_CONDITION))		// già a posto qua.. VERIFICARE!
+	//    ReadVar(outbuf,V->var,VARTYPE_PLAIN_INT,0,(*cond & VALUE_CONDITION_MASK) ? TRUE : FALSE,FALSE);
 		}
   else if(V->Q & VALUE_IS_COSTANTE) {
-		if(!(V->Q & VALUE_IS_CONDITION))		// già a posto qua.. VERIFICARE!
-	    PROCUseCost(outbuf,V->Q,V->type,V->size,V->cost,FALSE);
+	//	if(!(V->Q & VALUE_IS_CONDITION))		// già a posto qua.. VERIFICARE!
+//	    PROCUseCost(outbuf,V->Q,V->type,V->size,V->cost,FALSE);
 		}
 
 //	V->Q &= 0xf0;			// lascio solo le condizioni
@@ -198,7 +198,7 @@ void CPlusMinus::skipExpr(uint8_t Pty,char delim) {		// usata per ignorare del t
  char origLabel[32];
 
 int8_t CPlusMinus::FNRev(char *outbuf,int8_t Pty,int16_t *cond,char *Clabel,struct OPERAND *V) {
-  int i,j,I;
+  int i,j,I,f;
 	O_TYPE T1;
 	uint32_t T;
 	int8_t v;
@@ -208,7 +208,7 @@ int8_t CPlusMinus::FNRev(char *outbuf,int8_t Pty,int16_t *cond,char *Clabel,stru
 	bool Exit=FALSE;
   int VQ1;
   char Rlabel[/*32*/ sizeof(STR_LONG)];
-  char AS[64],*BS,B1S[64],TS[/*32*/ sizeof(STR_LONG)],T1S[64],MyBuf[64],MyBuf1[64];
+  char AS[128],*BS,B1S[128],TS[/*32*/ sizeof(STR_LONG)],T1S[128],MyBuf[128],MyBuf1[128];
   char *p1;
 	struct VARS RPtr;
 	struct OPERAND R;
@@ -305,7 +305,11 @@ int8_t CPlusMinus::FNRev(char *outbuf,int8_t Pty,int16_t *cond,char *Clabel,stru
                 case '(':
                   if(Co>0) {
                     if(V->type & VARTYPE_FUNC) {
-                      PROCUsaFun(V->var);		//?? qua 2025, Pty solo se operazione binary
+                      PROCUsaFun(outbuf,V->var);		//?? qua 2025, Pty solo se operazione binary
+											wsprintf(T1S,"%s(%s)",V->var->name,outbuf);
+											_tcscpy(outbuf,T1S);
+// no, mi serve in ev. espressioni		PROCOper(LINE_TYPE_CALL,V->var,outbuf,NULL,LINE_IS_NORMAL);
+//									*outbuf=0;
                       V->size=V->var->size;		// specie per inline/builtin 2026, verificare altre!
                       V->type &= ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY) /*0xfffffc7f*/;
                       V->Q=VALUE_IS_EXPR_FUNC;
@@ -322,7 +326,7 @@ int8_t CPlusMinus::FNRev(char *outbuf,int8_t Pty,int16_t *cond,char *Clabel,stru
                       V->type=VARTYPE_PLAIN_INT;
                       V->size=0;
 											ZeroMemory(V->var,sizeof(struct VARS));
-                      PROCGetType(outbuf,&V->type,&V->size,&V->tag,d,&attrib,l1);
+                      f=PROCGetType(outbuf,&V->type,&V->size,&V->tag,d,&attrib,l1);
 
                       PROCCheck(')');
                       i2=0;
@@ -763,6 +767,8 @@ rifo_struct:
 									FNLO(T1S);
 									if(*FNLA(MyBuf) == '(') {
 										long tt=FIn->GetPosition();
+										struct TAGS *inBase;
+
 										PROCCheck('(');
 										*MyBuf1=0;
 										collectParmList(MyBuf1);
@@ -770,27 +776,43 @@ rifo_struct:
 //							__line__=ol;
 
 rifo_inherit:
-										_tcscpy(MyBuf,V->tag->label);
-										_tcscat(MyBuf,"_");
-										_tcscat(MyBuf,T1S);
-										_tcscat(MyBuf,"__");
-										_tcscat(MyBuf,MyBuf1);
-										R.var=FNGetAggr(V->tag,MyBuf,(V->type & VARTYPE_CLASS) ? 2 : ((V->type & VARTYPE_STRUCT) ? 1 : 0),&reg2);
-										if(!R.var) {
-											if(V->tag->parent) {
-												V->tag=V->tag->parent;
-//											R.var=FNGetAggr(V->tag->parent,MyBuf,(V->type & VARTYPE_CLASS) ? 2 : ((V->type & VARTYPE_STRUCT) ? 1 : 0),&reg2);
-												PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,V->tag->label,NULL,NULL,"chiamo padre",LINE_IS_NORMAL);
-												goto rifo_inherit;
+										if(V->tag) {
+											_tcscpy(MyBuf,V->tag->label);
+											_tcscat(MyBuf,"_");
+											_tcscat(MyBuf,T1S);
+											_tcscat(MyBuf,to_mangle);
+											_tcscat(MyBuf,MyBuf1);
+											R.var=FNCercaFunz(V->tag,T1S,MyBuf1,&inBase);
+
+//											R.var=FNGetAggr(V->tag,MyBuf,(V->type & VARTYPE_CLASS) ? 2 : ((V->type & VARTYPE_STRUCT) ? 1 : 0),&reg2);
+
+											if(!R.var) {
+												if(V->tag->parent) {
+													V->tag=V->tag->parent;
+	//											R.var=FNGetAggr(V->tag->parent,MyBuf,(V->type & VARTYPE_CLASS) ? 2 : ((V->type & VARTYPE_STRUCT) ? 1 : 0),&reg2);
+													PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,V->tag->label,NULL,NULL,"chiamo padre",LINE_IS_NORMAL);
+													goto rifo_inherit;
+													}
+												PROCError(2660,T1S);
+												goto no_member_struct;
 												}
-											PROCError(2660,T1S);
+											}
+										else {
+											PROCError(2065,R.var->name);
 											goto no_member_struct;
 											}
 										PROCCheck('(');
 										if(R.var->type & VARTYPE_FUNC) {
 
 //									_tcscat(outbuf,R.var->name);
-											PROCUsaFun(R.var,R.var->classe == CLASSE_MEMBER_STATIC ? FALSE : TRUE,V->var->name);
+											PROCUsaFun(outbuf,R.var,R.var->classe == CLASSE_MEMBER_STATIC ? FALSE : TRUE,V->var->name);
+											wsprintf(T1S,"%s(%s)",R.var->name,outbuf);
+											_tcscpy(outbuf,T1S);
+// no, mi serve in ev. espressioni		PROCOper(LINE_TYPE_CALL,R.var,outbuf,NULL,LINE_IS_NORMAL);
+//									*outbuf=0;
+                      V->size=R.var->size;		// specie per inline/builtin 2026, verificare altre!
+                      V->type = R.var->type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY) /*0xfffffc7f*/;
+                      V->Q=VALUE_IS_EXPR_FUNC;
 											}
 										else
 											PROCError(2064,T1S);
@@ -811,7 +833,13 @@ rifo_inherit2:
 											}
 										}
 //                  myLog->print(0,"GetAGGR\a: %d",reg2);
-									_tcscat(outbuf,R.var->name);
+									if(*TS==':') {
+										_tcscpy(outbuf,R.var->isInTag->label);
+										_tcscat(outbuf,"_");
+										_tcscat(outbuf,R.var->name);
+										}
+									else
+										_tcscat(outbuf,R.var->name);
 									if(V->type & VARTYPE_IS_POINTER) {
 		//								if(i)
 //						  				PROCOper(LINE_TYPE_ISTRUZIONE,"adda.l",OPDEF_MODE_REGISTRO_INDIRETTO,Regs->P,		// MemoryModel
@@ -823,6 +851,12 @@ rifo_inherit2:
 	//									u[1].ofs = /* += */ reg2;
 									if(V->Q==VALUE_IS_D0) {
 										if(*TS=='.') {
+											if(V->type & VARTYPE_IS_POINTER)
+												PROCError(2221);
+											else 
+												PROCGetAdd(VALUE_IS_COSTANTE,V->var,0,TRUE);
+											}
+										else if(*TS==':') {
 											if(V->type & VARTYPE_IS_POINTER)
 												PROCError(2221);
 											else 
@@ -842,6 +876,12 @@ rifo_inherit2:
 												PROCError(2221);
 											else 
 												PROCGetAdd(VALUE_IS_VARIABILE,V->var,0,TRUE);
+											}
+										else if(*TS==':') {
+											if(V->type & VARTYPE_IS_POINTER)
+												PROCError(2222);
+//											else 
+	//											ReadVar(outbuf,V->var,VARTYPE_PLAIN_INT,0,0,TRUE);
 											}
 										else {
 											if(V->type & VARTYPE_IS_POINTER) {
@@ -961,10 +1001,12 @@ no_member_struct: ;
             case 2:
               switch(*TS) {
                 case '-':
-                  if(*(TS+1) != '-') 
+                  if(*(TS+1) != '-')  {
                     goto LUnaryMinus;
-									else
+										}
+									else {
 										goto LBinaryMinus;
+										}
                 case '+':      
                   if(*(TS+1) != '+') 
 										continue;//                    goto LUnaryPlus;
@@ -1003,6 +1045,8 @@ LBinaryMinus:
 									
 									if(V->type & VARTYPE_IS_POINTER)
 										V->flag=1;		// indico che ho già il puntatore pronto
+									if(V->var)
+										_tcscat(outbuf,V->var->name);
 									_tcscat(outbuf,TS);
 	                break;
 
@@ -1201,6 +1245,7 @@ unarynot_done:
 
 	              case 'z':                  // finto per lasciare il case!
 LUnaryMinus:
+									_tcscat(outbuf,"-");
 //	                *cond=0;
 	                FNRev(outbuf,2,cond,Clabel,V);
 	                switch(V->Q) {
@@ -1236,7 +1281,7 @@ LUnaryMinus:
 	                FNLO(TS);
 	                if(FNIsType(TS) != VARTYPE_NOTYPE) {
 										I=0;
-	                  PROCGetType(outbuf,&R.type,(uint16_t*)&T,&R.tag,(uint32_t*)&R.dim,&attrib,l1);
+	                  f=PROCGetType(outbuf,&R.type,(uint16_t*)&T,&R.tag,(uint32_t*)&R.dim,&attrib,l1);
 	                  }
 	                else {
 										FIn->RestorePosition(l1);
@@ -1502,13 +1547,13 @@ myURcost:
 //                if(R.var >= 0) {
 //                  PROCCast(V->type,V->size,R.type,R.size);
 //                  }
-                    PROCOper(LINE_TYPE_ISTRUZIONE,"mov");
+//                    PROCOper(LINE_TYPE_ISTRUZIONE,"mov");
 //	              if(T==-1) {
 //	                T=0;
 //	                }
 							  if(!(V->type & VARTYPE_FLOAT) && (R.type & VARTYPE_FLOAT)) {
 									struct VARS *v;
-									v=FNCercaVar("_fcvti",0);
+									v=FNCercaVar("_fcvti",FALSE);
   								if(!v)
 						   		  v=PROCAllocFunzProto("_fcvti",VARTYPE_FUNC_USED | VARTYPE_FLOAT,V->size);	
 									if(R.Q==VALUE_IS_VARIABILE)
@@ -1600,6 +1645,14 @@ myURcost:
 
 
                 }
+
+								_tcscat(MyBuf,outbuf);
+								if(V->var)
+									_tcscpy(outbuf,V->var->name);
+								else
+									*outbuf=0;
+								_tcscat(outbuf,TS);
+								_tcscat(outbuf,MyBuf);
               break;
 
             case 11:
@@ -1654,7 +1707,7 @@ myLog->print(0,"OP logico %u (%u): entro al livello %d con %x (cond è %x), Brack
 
 							if(!(V->type & VARTYPE_FLOAT) && (R.type & VARTYPE_FLOAT)) {
 								struct VARS *v;
-								v=FNCercaVar("_fcvti",0);
+								v=FNCercaVar("_fcvti",FALSE);
 								/* ovvero da gemini 2026
 								; Esempio codegen per: if (f)
 MOV.d   R0, [R24-4]      ; Carica l'immagine a 32-bit del float
@@ -1944,12 +1997,13 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 //		          *cond=0;
 		          if(FNRev(outbuf,14,cond,Rlabel,&R) < 0)
 								/*PROCError(2059) no... finire*/;
-		          if((R.Q==VALUE_IS_VARIABILE && (V->Q != VALUE_IS_VARIABILE || V->var->classe != CLASSE_REGISTER))
-								) {   // store in registri a parte...
+		          if((R.Q==VALUE_IS_VARIABILE && (V->Q != VALUE_IS_VARIABILE))
+								) {   // 
                 ReadVar(outbuf,R.var,V->type,FNGetMemSize(V->type,V->size,NULL/*dim*/,1),0,FALSE);
+                T=0;
                 }
               else {
-								if(V->Q == VALUE_IS_VARIABILE && V->var->classe == CLASSE_REGISTER)		// v.sopra: qua mi serve... forse anche altri
+								if(V->Q == VALUE_IS_VARIABILE /*&& V->var->classe == CLASSE_REGISTER*/)		// v.sopra: qua mi serve... forse anche altri
 	                T=1;
 								else 
 									T= R.Q & VALUE_IS_COSTANTE ? 1 : 0;
@@ -2071,8 +2125,33 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 														T=R.Q;
 														break;
 													}
-												StoreVar(outbuf,V->var,T,R.var,R.cost,R.var /*&& R.var->isInTag*/ ? R.var->parm.ofs : 0);		// 
+
+												StoreVar(outbuf,TS,V->var,T,R.var,R.cost,R.var /*&& R.var->isInTag*/ ? R.var->parm.ofs : 0);		// 
+												if(!_tcscmp(R.var->name,malloc_name) && R.var->hasTag && R.var->hasTag->type==2) {
+													if(R.var->parm.ptr) {
+														p1=_tcschr(R.var->parm.ptr,'(');		// v. di là, è il marker per mangling
+														if(p1) {
+															*p1++=0;
+															wsprintf(TS,"%s%s__%s",R.var->hasTag->label,ctor,R.var->parm.ptr);
+															wsprintf(MyBuf,"%s,%s",V->var->name,p1);
+															}
+														else {
+															wsprintf(TS,"%s%s__",R.var->hasTag->label,ctor);
+															wsprintf(MyBuf,"%s,%s",V->var->name,R.var->parm.ptr);
+															}
+														}
+													else {
+														wsprintf(TS,"%s%s__",R.var->hasTag->label,ctor);
+														wsprintf(MyBuf,"%s",V->var->name);
+														}
+													PROCOper(LINE_TYPE_CALL,TS,MyBuf,NULL,NULL,LINE_IS_NORMAL);
+													R.var->hasTag=NULL;	// usa e getta direi!
+													if(R.var->parm.ptr)
+														GlobalFree(R.var->parm.ptr);
+													R.var->parm.ptr=NULL;
+													}
 												}
+
 
 											// VERIFICARE perché arriva 2!!
 
@@ -2125,7 +2204,7 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 													// manca sign-extend, dice gemini 2026
 													}
 												R.Q=VALUE_IS_EXPR;
-												PROCStoreD0(outbuf,V->var,R.Q,R.var,R.cost,R.var ? R.var->parm.ofs : 0);
+												PROCStoreD0(outbuf,TS,V->var,R.Q,R.var,R.cost,R.var ? R.var->parm.ofs : 0);
 												}                
 											else {
 												if(!V->flag) {
@@ -2158,7 +2237,7 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 														T=R.Q;
 														break;
 													}
-												PROCStoreD0(outbuf,V->var,T,R.var,R.cost,R.var ? R.var->parm.ofs : 0);
+												PROCStoreD0(outbuf,TS,V->var,T,R.var,R.cost,R.var ? R.var->parm.ofs : 0);
 												}
 		    		          R.Q=VALUE_IS_EXPR;
 											}
@@ -2245,7 +2324,7 @@ my_add:
 //  						            }  
 												  break;
 												}
-											StoreVar(outbuf,V->var,R.Q,R.var,R.cost,0);
+											StoreVar(outbuf,TS,V->var,R.Q,R.var,R.cost,0);
 											break;
 				            case VALUE_IS_D0:        // non va se (de) o (bc)...
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
@@ -2327,7 +2406,7 @@ my_add:
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
 											// caso unico: prima DEC di store
 //											if(V->size >4)		// beh completare!
-											StoreVar(outbuf,V->var,R.Q,R.var,R.cost,0);
+											StoreVar(outbuf,TS,V->var,R.Q,R.var,R.cost,0);
 											break;
 										case VALUE_IS_D0:  		                   // non finito...
 											if(R.Q & VALUE_IS_COSTANTE) {
@@ -2344,7 +2423,7 @@ my_add:
 												j=0;
 												}
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
-											PROCStoreD0(outbuf,V->var,V->Q,V->var,V->cost,0);
+											PROCStoreD0(outbuf,TS,V->var,V->Q,V->var,V->cost,0);
 		    		          R.Q=VALUE_IS_EXPR;
 											break;
 										default:  
@@ -2420,7 +2499,7 @@ my_add:
 //  			                  }
 //  			                else  
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
-			                  StoreVar(outbuf,V->var,R.Q,R.var,R.cost,0);
+			                  StoreVar(outbuf,TS,V->var,R.Q,R.var,R.cost,0);
 //							          if(RQ != 8) {
 //  						            if(!i)
 //  						              Regs->Dec(FNGetMemSize(V->type,V->size,0));
@@ -2497,7 +2576,7 @@ my_aox:
 				                    ReadVar(outbuf,V->var,VARTYPE_PLAIN_INT,0,0,FALSE);		// FINIRE
 													i2=0;// era al posto di cond...??
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
-													StoreVar(outbuf,V->var,R.Q,R.var,R.cost,0/*(uint16_t)R.var->parm*/);
+													StoreVar(outbuf,TS,V->var,R.Q,R.var,R.cost,0/*(uint16_t)R.var->parm*/);
 //							          if(RQ != 8) {
 //  						            if(i)
 //  						              Regs->Dec(FNGetMemSize(V->type,V->size,0));

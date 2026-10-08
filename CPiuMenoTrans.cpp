@@ -5,7 +5,8 @@
 		**************************/
 
 // la dim di un oggetti aggregato dichiarato senza la parolina class struct ecc non è corretta
-
+//ora dclvar controlla il mangling quindi forse possiam togliere alcune cercavar prima...
+// n.b. const int MAX_SIZE = 100; ha linkage static in C++ mentre extern in C 
 
 
 #include "stdafx.h"
@@ -53,6 +54,11 @@ struct TIPI CPlusMinus::Types[50]={
 
 char *CPlusMinus::ctor="_ctor";
 char *CPlusMinus::dtor="_dtor";
+char *CPlusMinus::to_mangle="__";
+char *CPlusMinus::ptr_to_base="__base.";
+char *CPlusMinus::ptr_to_base2="__base";
+char *CPlusMinus::main_name="main";
+char *CPlusMinus::malloc_name="malloc",*CPlusMinus::free_name="free";
 
 CPlusMinus::CPlusMinus(const CWnd *v) {
 
@@ -84,6 +90,7 @@ int CPlusMinus::CompilaCpp(int argc, char **argv) {
   PreProcOnly=FALSE;
 	PreProcCommenti=FALSE;
   CheckStack=FALSE;
+	UsesMalloc=FALSE;
   OutSource=FALSE;
   OutList=FALSE;
   OutAsm=FALSE;
@@ -110,6 +117,7 @@ int CPlusMinus::CompilaCpp(int argc, char **argv) {
 	__line__=0;
 
 	Var=LVars=NULL;
+	c_mode=0;
 	CurrFunc=NULL;
 	CurrFuncGotos=NULL;
 	FuncReturnedValue=FALSE;
@@ -455,6 +463,9 @@ Concatenare su disco FO5 + FO3 + FO1 + FO2 + FO4
 				FNLO(ARGS);
 				PROCBlock();
 				}
+			else if(*ARGS==';') {		// cmq :)
+				FNLO(ARGS);
+	  		}
 			else {
 				if(*ARGS) {
 					if(!FNIsStmt()) 
@@ -550,31 +561,49 @@ skippa_var:
   PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"");
 	PROCOper(LINE_TYPE_FUNCTION,"void","__global_constructors",NULL, NULL,LINE_IS_NORMAL);
 	// (inserire tutte istanze classi globali o statiche
+	InBlock=1;		// per formattazione!
 	struct VARS *v;
 	v=Var;		// 
-	while(v) {		// creo tutti gli oggetti locali
+	while(v) {		// creo tutti gli oggetti globali
 		if(v->type & VARTYPE_CLASS && v->hasTag && v->classe<CLASSE_AUTO) {	
-			char MyBuf2[128];
+			char MyBuf2[128],*p1;
 
+			if(v->parm.ptr) {
+				p1=_tcschr(v->parm.ptr,'(');		// v. sopra, è il marker per mangling
+				if(p1)
+					*p1++=0;
+				}
+			else
+				p1=NULL;
 			_tcscpy(myBuf,v->hasTag->label);		// 
 			_tcscat(myBuf,ctor);
+			_tcscat(myBuf,to_mangle);
+			if(v->parm.ptr)
+				_tcscat(myBuf,v->parm.ptr);
 			_tcscpy(MyBuf2,"&");
 			_tcscat(MyBuf2,v->name);
+			if(p1) {
+				_tcscat(MyBuf2,",");
+				_tcscat(MyBuf2,p1);
+				}
+			if(v->parm.ptr)
+				GlobalFree(v->parm.ptr);
 
 			PROCOper(LINE_TYPE_CALL,myBuf,MyBuf2,NULL,v->name);
 
 			}
 		v=v->next;
 		}
-  PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t}\n");
+  PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"}\n");
 	PROCOper(LINE_TYPE_FUNCTION,"void","__global_destructors",NULL, NULL,LINE_IS_NORMAL);
 	v=Var;		// 
-	while(v) {		// distruggo tutti gli oggetti locali
+	while(v) {		// distruggo tutti gli oggetti globali
 		if(v->type & VARTYPE_CLASS && v->hasTag && v->classe<CLASSE_AUTO) {	
 			char MyBuf2[128];
 
 			_tcscpy(myBuf,v->hasTag->label);		// 
 			_tcscat(myBuf,dtor);
+			_tcscat(myBuf,to_mangle);
 			_tcscpy(MyBuf2,"&");
 			_tcscat(MyBuf2,v->name);
 
@@ -583,7 +612,8 @@ skippa_var:
 			}
 		v=v->next;
 		}
-  PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t}\n");		
+  PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"}\n");
+	InBlock=0;		// per formattazione!
 
 
   FO1->Seek(0l,CFile::begin);  
@@ -594,6 +624,8 @@ skippa_var:
 
 	if(!(TipoOut & TIPO_SPECIALE)) {	// sarebbe per MC68000 ma in effetti può valere sempre, tipo se MemoryModel =COMPACT o simile
 		FObj->printf("\n//****(EXTERN / INCLUDES / PROTOTIPI)\n",NULL);		
+		if(UsesMalloc)
+			FObj->printf("#include <stdlib.h>\t\t// per new/delete/malloc/free");		// FARE SOLO SE USATO
 		while((ch=FO5->get()) != EOF)			// (EXTERN / INCLUDES / PROTOTIPI)
 			FObj->put(ch);
 		FObj->printf("\n//**(CONST / STRINGS)\n",NULL);		
@@ -700,6 +732,7 @@ int CPlusMinus::PROCBlock() {
 	if(InBlock >= MAX_BLOCCHI)
 		PROCError(1002,"blocchi nidificati");
 	OldTX[InBlock].AutoOff = min(OldTX[InBlock-1].AutoOff,OldTX[InBlock].AutoOff);
+	OldTX[InBlock].flag=0;
   I=InBlock;    
   do {
 		FIn->SavePosition();
@@ -727,7 +760,13 @@ int CPlusMinus::PROCBlock() {
 		  case '}':
 				FNLO(ARG);
 //				__line__++;
-				goto end_block;
+				if(c_mode && c_mode==InBlock) {
+					c_mode=0;
+					InBlock--;
+					return 0;
+					}
+				else 
+					goto end_block;
 				break;
 		  default:
 				FIn->RestorePosition(OT);
@@ -783,7 +822,7 @@ end_block:
 			return -1;
 			}
 		AutoOff &= -STACK_ITEM_SIZE;
-		if(!_tcscmp(CurrFunc->name,"main")) {
+		if(!_tcscmp(CurrFunc->name,main_name)) {
 				}
 //    myLog->print("eccomi %d",CurrFunc);
 //  	PROCV("vartmp.map");
@@ -850,30 +889,64 @@ end_block:
 //		  PROCOper(LINE_TYPE_ISTRUZIONE,"\n\treturn");
 			}
 
-		struct VARS *v=Var;		// OCCHIO METTERE PRIMA DI EVENTUALE return ESPLICITO!
-		while(v) {		// distruggo tutti gli oggetti locali
-			if(v->type & VARTYPE_CLASS && v->hasTag && v->func.func==CurrFunc && v->classe==CLASSE_AUTO) {	// per le static farlo insieme alle global alla fine
+	  PROCOper(LINE_TYPE_LABEL_CON_ISTRUZIONE,"__return_end:\n;");
+
+		/*
+		struct VARS *v,*limit=NULL,*lastFound=NULL;		// OCCHIO METTERE PRIMA DI EVENTUALE return ESPLICITO!
+		do {
+			lastFound=NULL;
+			v=Var;
+			while(v && v != limit) {
+				//(ANDREBBE in ordine inverso!
+				if(v->type & VARTYPE_CLASS && v->hasTag && v->func.func==CurrFunc && v->classe==CLASSE_AUTO
+					) {	// (per le static farlo insieme alle global alla fine
+					lastFound=v;
+					}
+				v=v->next;
+				}
+			if(lastFound) {
 				char MyBuf2[128];
 
-				_tcscpy(MyBuf,v->hasTag->label);		// 
+				_tcscpy(MyBuf,lastFound->hasTag->label);		// 
 				_tcscat(MyBuf,dtor);
+				_tcscat(MyBuf,to_mangle);
 				_tcscpy(MyBuf2,"&");
-				_tcscat(MyBuf2,v->name);
+				_tcscat(MyBuf2,lastFound->name);
 
-				PROCOper(LINE_TYPE_CALL,MyBuf,MyBuf2,NULL,v->name);
-
+				PROCOper(LINE_TYPE_CALL,MyBuf,MyBuf2,NULL,lastFound->name);
 				}
-			v=v->next;
-			}
+			limit = lastFound;
+			} while(lastFound);
+*/
 
-		if(!_tcscmp(CurrFunc->name,"main")) {		// idem
+			v=LVars;
+			while(v) {
+				//in ordine inverso!
+				if(v->type & VARTYPE_CLASS && v->hasTag && v->func.func==CurrFunc && v->classe==CLASSE_AUTO
+					) {	// (per le static farlo insieme alle global alla fine
+					char MyBuf2[128];
+
+					_tcscpy(MyBuf,v->hasTag->label);		// 
+					_tcscat(MyBuf,dtor);
+					_tcscat(MyBuf,to_mangle);
+					_tcscpy(MyBuf2,"&");
+					_tcscat(MyBuf2,v->name);
+
+					PROCOper(LINE_TYPE_CALL,MyBuf,MyBuf2,NULL,v->name);
+					}
+				v=v->prev;
+				}
+
+		if(!_tcscmp(CurrFunc->name,main_name)) {		// idem
 			PROCOper(LINE_TYPE_CALL,"__global_destructors",NULL,NULL,NULL,LINE_IS_NORMAL);
 			PROCOper(LINE_TYPE_FUNCTION_DECLARATION,"void","__global_destructors",NULL,NULL,LINE_IS_NORMAL);
 			}
 
+		if(CurrFunc->size>0)
+			PROCOper(LINE_TYPE_ISTRUZIONE,"return __retval");
 
 //	  PROCOper(LINE_TYPE_DATA_DEF,CurrFunc->label);
-	  PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t}\n");
+	  PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"}\n");
 //		PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"endfunction");
 //		if(Reg<Regs->MaxUser && !(CurrFunc->modif & (FUNC_MODIF_FASTCALL | FUNC_MODIF_INLINE))) {
 //	  	wsprintf(MyBuf,"{R%u-R%u}",Reg,Regs->MaxUser-1);
@@ -918,7 +991,21 @@ end_block:
 		if(OutList) {
 			PROCVarList(FLst,CurrFunc);
 			}
-		// cancella le variabili locali...
+		// cancella le variabili locali... POI USARE il members di Vars
+/*		{ struct VARS *V,*v;
+		V=Var;
+		while(V) {
+			v=V->next;
+			if(V->func.func==CurrFunc && V->classe>=CLASSE_STATIC && V->classe<=CLASSE_REGISTER) {
+				if(v) {
+					V->next=v->next;
+					v->prev=V;
+					}
+				GlobalFree(V);
+				}
+			V=v;
+			}
+		}*/
 		while(CurrFuncGotos) {			    // cancello i goto
 			struct VARS *g=CurrFuncGotos->next;
 			GlobalFree(CurrFuncGotos);
@@ -938,7 +1025,7 @@ end_block:
   
 int CPlusMinus::PROCIsDecl() {
 // Class= 0 SE EXTERN, 1 SE GLOBAL, 2 SE STATIC, 3 SE AUTO, 4 SE REGISTER e poi CLASS_MAMBER_xxx
-  int v,t,i;
+  int v,t,i,f;
 	O_DIM dim={0};
 	O_SIZE size=INT_SIZE;
 	enum VAR_CLASSES Class;
@@ -979,8 +1066,12 @@ int CPlusMinus::PROCIsDecl() {
 		  FNLO(T);                 
 		  }
 		else {
-			FIn->RestorePosition(OldTextp2);
-			__line__=ol;
+			if(i==-1) {
+				FIn->RestorePosition(OldTextp2);
+				__line__=ol;
+				}
+			else
+				return 0;
 			}
 		} while(i>=0);
 	/*if(!_tcscmp(T,"const"))	{	// GESTIRE! usare ; v. anche di là
@@ -995,6 +1086,7 @@ int CPlusMinus::PROCIsDecl() {
 		if(tag) {		// è una dichiarazione (senza "class" o struct ecc
 			char MyBuf2[64],nome[MAX_NAME_LEN+1];
 			struct VARS *V;
+			struct TAGS *inBase;
 
 			if(tag->type==2) {
 				do {
@@ -1007,11 +1099,12 @@ int CPlusMinus::PROCIsDecl() {
 						}
 					else if(!_tcscmp(nome,"::")) {
 						FIn->RestorePosition(OldTextp);
+						*outbuf=0;
 						FNEvalExpr(outbuf,16,MyBuf);
 						}
 					else {
 						_tcscat(MyBuf,ctor);
-						newVar=FNCercaVar(nome,TRUE);
+						newVar=FNCercaVar(nome,TRUE,&inBase);
 						if(newVar)
 							PROCError(2086,MyBuf2);
 						else {
@@ -1024,19 +1117,35 @@ int CPlusMinus::PROCIsDecl() {
 								*MyBuf2=0;
 							FIn->RestorePosition(tt);
 inherit:
-							_tcscat(MyBuf,"__");
+							_tcscat(MyBuf,to_mangle);
 							_tcscat(MyBuf,MyBuf2);
-							V=FNCercaVar(MyBuf,FALSE);
+							V=FNCercaVar(MyBuf,FALSE,&inBase);
 							if(V) {
 								newVar=PROCAllocVar(nome,VARTYPE_CLASS,Class,0,4,tag,NULL/*dim*/);	// cercare size della class
 			//					newVar=PROCDclVar(Class,modif,VARTYPE_CLASS,size,tag,dim,attrib,FALSE,NULL);
+								if(*MyBuf2) {
+									newVar->parm.ptr=(char*)GlobalAlloc(GPTR,256);
+									_tcscpy(newVar->parm.ptr,MyBuf2);		// salvo qua per chiamare costruttore adatto in global!
+									}
+								PROCOper(LINE_TYPE_ISTRUZIONE,"struct",tag->label,nome,";");
 								FNLO(nome);
 								if(*FNLA(MyBuf2) == '(') {
 									PROCCheck('(');
-									PROCUsaFun(V,TRUE,nome);
+									if(CurrFunc) {		// se è locale...
+										PROCUsaFun(outbuf,V,TRUE,nome);
+										PROCOper(LINE_TYPE_CALL,V,outbuf,NULL,LINE_IS_NORMAL);
+										}
+									else {		// ..altrimenti
+										PROCUsaFun(outbuf,V,TRUE,nome);
+										if(newVar->parm.ptr) {
+											_tcscat(newVar->parm.ptr,"(");		// metto separè
+											p=_tcschr(outbuf,',');		// qua salto il "this" messo da usafun
+											_tcscat(newVar->parm.ptr,p ? p+1 : outbuf);
+											}
+										}
 									}
 								else {
-									if(1)		// SOLO SE subclass
+									if(1)		// SOLO SE subclass  __base
 										wsprintf(MyBuf,"(%s*)&%s",V->isInTag->label,newVar->name);
 									else
 										wsprintf(MyBuf,"&%s",newVar->name);
@@ -1044,15 +1153,16 @@ inherit:
 									}
 								}
 							else {
-								if(tag->parent) {
+/*NO!	si fa solo per quello di default, che quindi esiste di SICURO							if(tag->parent) {
 									//if(visibility			// fare
 
 									_tcscpy(MyBuf,tag->parent->label);
 									_tcscat(MyBuf,ctor);
 									goto inherit;
 									}
-								else
+								else*/
 									PROCError(2512,nome);
+									return 0;
 								}
 							}
 						}
@@ -1062,7 +1172,10 @@ inherit:
 				}
 			else {
 				do {
-					newVar=PROCDclVar(outbuf,Class,modif,tag->type==1 ? VARTYPE_STRUCT : VARTYPE_UNION,size,tag,dim,attrib,FALSE,NULL);
+							if(c_mode)
+								;
+					newVar=PROCDclVar(outbuf,Class,modif,tag->type==1 ? VARTYPE_STRUCT : VARTYPE_UNION,size,tag,dim,attrib,FALSE,
+						NULL,NULL);
 					FNLO(MyBuf);
 					} while(*MyBuf==',');       // ev altri
 
@@ -1116,7 +1229,7 @@ inherit:
 //			  SE NON SI SPECIFICAVA (O SI SPECIFICA) UN TIPO TORNA INDIETRO (errore, qua
 				FIn->RestorePosition(OldTextp);
 				__line__=ol;
-				PROCError(2143/*4430*/,T);		// errore qua!
+				PROCError(2143/*4430*/,T);		// errore in C++ (anche se VC98 lo prendeva come int, v. anche altrove
 				}
 
 			if(!_tcscmp(T,"unsigned") || !_tcscmp(T,"signed")) {
@@ -1133,17 +1246,21 @@ inherit:
 				size=INT_SIZE;
 				type |= VARTYPE_PLAIN_INT;		// vabbe' :)
 				}
-			PROCGetType(outbuf,&type,&size,&tag,dim,&attrib,OldTextp);	// qua risolviamo cmq la cosa che eventualmente segue i ::
+			f=PROCGetType(outbuf,&type,&size,&tag,dim,&attrib,OldTextp);	// qua risolviamo cmq la cosa che eventualmente segue i ::
 
 			FNLA(MyBuf);
-			if(!InBlock && (tag=FNCercaAggr(MyBuf,FALSE))) {		// questo è per la dichiarazioni di robe delle classi al livello esterno
+			{struct TAGS *tag2;
+			if(!InBlock && (tag2=FNCercaAggr(MyBuf,FALSE))) {		// questo è per la dichiarazioni di robe delle classi al livello esterno
+				tag=tag2;
 				FNLO(T);
 				PROCCheck("::");		// obbligatorio dunque!
 				do {
 					if(type & VARTYPE_FUNC) {
 						long OT;
 						bool is_ctor=FALSE,is_dtor=FALSE;		// UNIRE con la dichiarazione di classe...
-						char decor[128],T1S[128];
+						char decor[128],T1S[128],mangle[64];
+						struct TAGS *inBase;
+
 						OT=FIn->GetPosition();
 						FNLO(T1S);
 						if(!_tcscmp(T1S,tag->label)) {		// costruttore
@@ -1180,21 +1297,36 @@ inherit:
 							_tcscat(MyBuf,"_");
 							_tcscat(MyBuf,T1S);
 							}
-						_tcscat(MyBuf,"__");
+						_tcscat(MyBuf,to_mangle);
 		//				FIn->RestorePosition(OT);
 						PROCCheck('(');
-						collectTypeList(MyBuf);
-						if(!FNCercaVar(MyBuf,FALSE)) {		// 
+						collectTypeList(mangle);
+						_tcscat(MyBuf,mangle);
+						if(!FNCercaVar(MyBuf,FALSE,&inBase)) {		// 
 							PROCError(2039,T); 
 							return 0;
 							}
 						FIn->RestorePosition(OT);
 
-
 						Class=CLASSE_MEMBER;
-						newVar=PROCDclVar(outbuf,Class,modif,type,size,tag,dim,attrib,TRUE,T);
+//			      newVar=PROCAllocVar(MyBuf,type,Class,0,size,tag,dim);
+//				FNLO(MyBuf);
+			//			PROCOper(LINE_TYPE_DATA_DEF,"",outbuf,MyBuf,MyBuf,LINE_IS_NORMAL);
+						newVar=PROCDclVar(outbuf,Class,modif,type,size,tag,dim,attrib,FALSE,T,mangle);
+
 						FNLO(MyBuf);
-						if(*MyBuf == '{') {
+		//				FNLO(MyBuf);
+						if(*MyBuf == ':') {
+							_tcscpy(MyBuf,tag->parent->label);
+							_tcscat(MyBuf,ctor);
+							_tcscat(MyBuf,to_mangle);
+							wsprintf(T1S,"(%s*)&this->__base",tag->parent->label);
+							InBlock++;		// per formattazione!
+							PROCOper(LINE_TYPE_CALL,MyBuf,T1S,NULL,"chiamo altro",LINE_IS_NORMAL);
+							InBlock--;
+
+							}
+						else if(*MyBuf == '{') {
 							Declaring=TRUE;
 
 							PROCBlock();
@@ -1206,15 +1338,46 @@ inherit:
 							}
 						}
 					else {
+						struct TAGS *inBase;
+						struct VARS *v;
+						char T1S[64];
+
+						FNLA(MyBuf);
+						if(!(v=FNCercaVar(tag,MyBuf /*T*/,&inBase))) {		// 
+							PROCError(2039,MyBuf); 
+							return 0;
+							}
+						if(v->type != type || v->size != size) {
+							PROCError(2371,MyBuf); 
+							return 0;
+							}
 						Class=CLASSE_MEMBER_STATIC;
-						newVar=PROCDclVar(outbuf,Class,modif,type,size,tag,dim,attrib,TRUE,T);
+// no!						newVar=PROCDclVar(outbuf,Class,modif,type,size,tag,dim,attrib,FALSE,NULL/*T1S*/,NULL);
+						_tcscpy(T1S,T);
+						_tcscat(T,"_");
+						_tcscat(T,MyBuf);
 						FNLO(MyBuf);
+						FNLO(MyBuf);
+						v->type |= VARTYPE_INITIALIZED;
+						*T1S=0;
+						if(*MyBuf=='=') {
+							_tcscat(T1S,MyBuf);
+							do {
+								FNLO(MyBuf);
+								if(*MyBuf != ';')
+									_tcscat(T1S,MyBuf);
+								} while(*MyBuf && *MyBuf != ';');
+							FIn->unget(';');
+							}
+						PROCOper(LINE_TYPE_DATA,outbuf,T,T1S,NULL,LINE_IS_NORMAL);
+						break;
 						}
 					if(iscsym(*MyBuf))
 						PROCError(2059,MyBuf);		// se c'è subito un identificatore o cmq!
 					} while(*MyBuf==',');       // oppure tante var statiche
 				return 0;
 
+			}
 			}
 
 			if(type & VARTYPE_FUNC && Class == CLASSE_GLOBAL)		// ev. poi cambiato sotto
@@ -1252,14 +1415,76 @@ primogiro:
 
 	//			if(InBlock>0)
 //					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"",outbuf,NULL,NULL,LINE_IS_NORMAL);
-				newVar=PROCDclVar(outbuf,Class,modif,type,size,tag,dim,attrib,FALSE,NULL);
+				if(type & VARTYPE_FUNC && !c_mode) {
+					long l2=FIn->GetPosition();
+					char T1S[64];
+					struct TAGS *inBase;
+
+					FNLO(MyBuf);
+					PROCCheck('(');
+					if(tag) {
+						collectTypeList(MyBuf);
+		//				__line__=ol;
+						if(!FNCercaCtor(tag,MyBuf,TRUE,&inBase))
+							PROCError(2512,MyBuf);
+						}
+					FIn->RestorePosition(l2);
+					if(f)	{	// qua dovrebbe essere sicuro
+						if(tag) {
+							FNLO(T1S);
+							if(*FNLA(MyBuf) != ';') {
+								FNLO(MyBuf);
+								PROCCheck('(');
+								collectTypeList(MyBuf);
+				//				__line__=ol;
+								}
+							if(!FNCercaCtor(tag,MyBuf,TRUE,&inBase))
+								PROCError(2512,T1S);
+							FIn->RestorePosition(l2);
+							}
+						else
+							*MyBuf=0;
+						newVar=PROCDclVar(outbuf,Class,modif,type,size,tag,dim,attrib,FALSE,NULL,MyBuf);
+						if(*MyBuf) {
+							newVar->parm.ptr=(char*)GlobalAlloc(GPTR,256);
+							_tcscpy(newVar->parm.ptr,MyBuf);		// salvo qua per chiamare costruttore adatto in global!
+							}
+						}
+					}
+				else {
+					long l2=FIn->GetPosition();
+					char T1S[64];
+					struct TAGS *inBase;
+
+					if(f) {
+						if(tag) {
+							FNLO(T1S);
+							if(*FNLA(MyBuf) != ';') {
+								FNLO(MyBuf);
+								PROCCheck('(');
+								collectTypeList(MyBuf);
+				//				__line__=ol;
+								}
+							if(!FNCercaCtor(tag,MyBuf,TRUE,&inBase))
+								PROCError(2512,T1S);
+							FIn->RestorePosition(l2);
+							}
+						else
+							*MyBuf=0;
+						newVar=PROCDclVar(outbuf,Class,modif,type,size,tag,dim,attrib,FALSE,NULL,NULL);
+						if(*MyBuf) {
+							newVar->parm.ptr=(char*)GlobalAlloc(GPTR,256);
+							_tcscpy(newVar->parm.ptr,MyBuf);		// salvo qua per chiamare costruttore adatto in global!
+							}
+						}
+					}
 				FNLO(MyBuf);
 				if(iscsym(*MyBuf))
 					PROCError(2059,MyBuf);		// se c'è subito un identificatore o cmq!
 				} while(*MyBuf==',');       // TUTTA UNA SERIE DI DICHIARAZIONI
 		  }
 		else {
-		  PROCError(2143,"no more allocation allowed");
+		  PROCWarn(2143,"mixing declarations and code is incompatible with standards before C99");		// QUA FORSE NO!
 //		  PROCError(2062,"type"); o anche 2143 "...before type"
 		  }
 		      // qui non è bello... tiene conto delle funz
@@ -1281,10 +1506,10 @@ primogiro:
   }
  
 struct VARS *CPlusMinus::PROCDclVar(char *outbuf,enum VAR_CLASSES Class, uint8_t Modif, O_TYPE Type, O_SIZE Size, struct TAGS *tag, O_DIM dim, 
-										uint32_t attrib, bool isParm, const char *decor) {
-  int v,t1,T2,i;
+										uint32_t attrib, bool isParm, const char *decor, const char *mangle) {
+  int v,t1,T2,i,f;
   char T[128],nome[256],S[128],MyBuf[256 /*sizeof(union STR_LONG)*/];
-  long OldTextp,t,t2;
+  long OldTextp,t,t2,BaseTextP=0;
   char *p;
   struct VARS *V,*newvar;
 	int ol;
@@ -1293,8 +1518,6 @@ struct VARS *CPlusMinus::PROCDclVar(char *outbuf,enum VAR_CLASSES Class, uint8_t
 	char varType[128];
   
   *S=0;
-  if((int32_t)(int16_t)Size==-2)		// marker per aggregato... MIGLIORARE
-		return NULL;
   OldTextp=FIn->GetPosition();
 	ol=__line__;
   FNLO(nome);             // LEGGO UN ITEM
@@ -1306,26 +1529,52 @@ struct VARS *CPlusMinus::PROCDclVar(char *outbuf,enum VAR_CLASSES Class, uint8_t
 			PROCError(2059,nome);
 		return 0;
 		}
-	if(decor) {
-		if(!_tcscmp(decor,ctor)) {
-			_tcscat(nome,decor);
-			_tcscpy(T,decor);
+	if(_tcscmp(nome,main_name)) {	// eccezione (ehhh porcodio
+		if(decor) {
+			if(!_tcscmp(decor,ctor)) {
+				_tcscat(nome,decor);
+				if(mangle) {
+					_tcscat(nome,to_mangle);
+					_tcscat(nome,mangle);
+					}
+				_tcscpy(T,decor);
+				}
+			else if(!_tcscmp(decor,dtor)) {
+				_tcscat(nome,decor);
+				if(mangle) {
+					_tcscat(nome,to_mangle);
+					_tcscat(nome,mangle);
+					}
+				_tcscpy(T,decor);
+				}
+			else {
+				_tcscpy(S,decor);
+				_tcscat(S,"_");
+				_tcscat(S,nome);
+				if(mangle) {
+					_tcscat(S,to_mangle);
+					_tcscat(S,mangle);
+					}
+				_tcscpy(T,nome);
+				_tcscpy(nome,S);
+				}
+	/*		if(mangle) {
+				_tcscat(T,to_mangle);
+				_tcscat(T,mangle);
+				}*/
 			}
-		else if(!_tcscmp(decor,dtor)) {
-			_tcscat(nome,decor);
-			_tcscpy(T,decor);
-			}
-		else {
-			_tcscpy(S,decor);
-			_tcscat(S,"_");
-			_tcscat(S,nome);
+		else if(mangle) {		// se funz globale e NON siamo in "C"
 			_tcscpy(T,nome);
-			_tcscpy(nome,S);
+			_tcscat(nome,to_mangle);
+			_tcscat(nome,mangle);
 			}
+		else
+			_tcscpy(T,nome);
 		}
 	else
 		_tcscpy(T,nome);
-  V=FNCercaVar(nome,TRUE);     // SE LA VARIABILE GIA' ESISTE... (nel blocco)
+  V=FNCercaVar(nome,TRUE);
+	// SE LA VARIABILE GIA' ESISTE... (nel blocco)
 /*  if(V) {
 //		if((Size != V->size) || ((V->classe>CLASSE_EXTERN) && (Class != V->classe))) 
 		if(V->classe>CLASSE_EXTERN && Class >= V->classe)
@@ -1335,7 +1584,7 @@ struct VARS *CPlusMinus::PROCDclVar(char *outbuf,enum VAR_CLASSES Class, uint8_t
 	if(V) {
 		if(decor) {
 			if(!_tcscmp(decor,ctor) || !_tcscmp(decor,dtor)) {
-				if(V->type || V->size)		// non dovrebbe accettare manco void
+				if((V->type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED)) || V->size)		// non dovrebbe accettare manco void
 					PROCError(2831);
 				}
 			}
@@ -1343,7 +1592,7 @@ struct VARS *CPlusMinus::PROCDclVar(char *outbuf,enum VAR_CLASSES Class, uint8_t
 			// 1. Se le classi non coincidono (es. STATIC vs GLOBAL) -> ERRORE
 			if(Class != V->classe) {
 				if(V->type & VARTYPE_FUNC) {
-					// se prototipo DOPO la funzione, ossia cazzata :D
+					// se prototipo DOPO la funzione, ossia cazzata :D  anche se VC98 accetta cmq, gemini dice di no
 					if(((V->type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY)) 
 						!= (Type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY)))	// e bisognerebbe controllare pure tutti i parametri...
 						|| V->size != Size)
@@ -1550,10 +1799,13 @@ L5080:
 				  }
 				break;
 		  case CLASSE_MEMBER:
-		  case CLASSE_MEMBER_STATIC:
 		  case CLASSE_MEMBER_VIRTUAL:
 				if(!(V->type & VARTYPE_FUNC))		// le funzioni vanno altrove
 					PROCOper(LINE_TYPE_DATA,V->name,NULL,NULL,V->label,LINE_IS_NORMAL);
+				break;
+		  case CLASSE_MEMBER_STATIC:
+// no, solo se definita da fuori, v. di là				if(!(V->type & VARTYPE_FUNC))		// le funzioni vanno altrove
+//					PROCOper(LINE_TYPE_DATA,V->name,NULL,NULL,V->label,LINE_IS_NORMAL);
 				break;
 		  default:
 				break;
@@ -1593,7 +1845,13 @@ L5080:
 				}
 
 		  if(*T == ':') {		// inherit...
+				BaseTextP=FIn->GetPosition();		// salvo per fare dopo
 
+				FNLO(T);
+
+					do {
+						FNLO(T);
+						} while(*T && *T != ';' && *T != '{');		// salto queste cose
 				}
 
 		  if(*T != ';') {		// ossia se segue '{'
@@ -1639,7 +1897,7 @@ L5080:
 				*OldTX[0].T=0;
 				FIn->RestorePosition(t);
 				__line__=ol;
-				if(V->isInTag) {
+				if(V->isInTag && V->classe != CLASSE_MEMBER_STATIC) {
 					_tcscpy(outbuf,V->isInTag->label);
 					_tcscat(outbuf," *this");
 					}
@@ -1652,8 +1910,8 @@ L5080:
 					if(V->isInTag) {
 						if(strstr(V->name,dtor))		// eh beh!
 							PROCError(2831);
-						_tcscat(V->name,"__");		// mangling
-//						_tcscat(V->label,"__");
+//						_tcscat(V->name,to_mangle);		// mangling
+//						_tcscat(V->label,to_mangle);
 						_tcscat(outbuf,",");
 						}
 					else
@@ -1664,12 +1922,14 @@ L5080:
 				  if((v>=0) || (FNIsType(T) != VARTYPE_NOTYPE)) {
 						int totParm=*V->parm.ptr32;
 						int *parmPtr=NULL;
+						struct TAGS *tag2;
 
 //						FIn->Seek(t,CFile::begin);
 						if(*T==')' || *T==',' /*!iscsymf(*T)*/) {			// tipo parentesi subito chiusa, o virgola - csymf solo lettere! quindi mi incasina gli '*'
 							PROCError(2055);
 							return 0 /*break*/;
 							}
+//						subAcquisisciParm(V->parm.ptr32,V,V->isInTag != 0,TRUE);
 					  do {
 //							_tcscat(outbuf,T);
 						  v=FNIsClass(T);
@@ -1693,9 +1953,9 @@ L5080:
 
 							Size=INT_SIZE;
 							Type=VARTYPE_PLAIN_INT;
-							tag=NULL;
+							tag2=NULL;		// non perdo quello in entrata!
 
-							PROCGetType(outbuf,&Type,&Size,&tag,dim,&attrib,t);
+							f=PROCGetType(outbuf,&Type,&Size,&tag2,dim,&attrib,t);
 
 								if(debug)  {
 									char *tmp=(char*)(tag ? tag->label : "");/*NON CI PIACE @#£$% si incasina la printf del log...*/
@@ -1706,10 +1966,10 @@ L5080:
 								goto void_parm;
 								}
 
-							newvar=PROCDclVar(outbuf,Class,0,Type,Size,tag,dim,attrib,TRUE,NULL);
-	  					if(Type & VARTYPE_POINTER && Size==0)
-								Size=PTR_SIZE;     // scavalco VOID, ma non void*
-	  					if(FNGetMemSize(Type,Size,0/*dim*/,0) != 0) {     // scavalco VOID, ma non void*
+							if(c_mode)
+								;
+							newvar=PROCDclVar(outbuf,Class,0,Type,Size,tag,dim,attrib,TRUE,NULL,NULL);
+	  					if(FNGetMemSize(Type,Size,NULL/*dim*/,0) != 0) {     // scavalco VOID, ma non void*
 								if(!(V->modif & FUNC_MODIF_FASTCALL)) 		// e inline pure
 									parmPtr=V->parm.ptr32;
 								else
@@ -1734,9 +1994,9 @@ L5080:
 
 								}
 							if(V->isInTag) {
-								char ch[64];
-								getDecor(ch,Type,Size,NULL/*dim*/,tag);
-								_tcscat(V->name,ch);		// mangling
+//								char ch[64];
+	//							getDecor(ch,Type,Size,NULL/*dim*/,tag);
+		//						_tcscat(V->name,ch);		// mangling
 								}
 
 void_parm:
@@ -1788,13 +2048,87 @@ skip_var:
 					PROCOper(LINE_TYPE_FUNCTION,varType,V->name,outbuf, NULL,LINE_IS_NORMAL);
 				  }		// ci sono parametri
 					else {		// lo faccio cmq perché se no mi esce l'errore perché sto facendo il mangling DOPO la dichiarazione
-						if(V->isInTag) {
-							_tcscat(V->name,"__");		// mangling
-//							_tcscat(V->label,"__");
+//						if(V->isInTag) {
+	//						_tcscat(V->name,to_mangle);		// mangling
+//							_tcscat(V->label,to_mangle);
 //							*V->parm.ptr32=0;		// qua serve
-							}
-					PROCOper(LINE_TYPE_FUNCTION,varType,V->name,outbuf, NULL,LINE_IS_NORMAL);
+							//}
+						PROCOper(LINE_TYPE_FUNCTION,varType,V->name,outbuf, NULL,LINE_IS_NORMAL);
 						}
+
+					if(BaseTextP) {		// se c'era inherit e/o init membri...
+						BaseTextP=FIn->GetPosition();		
+						struct VARS *v;
+						struct TAGS *base;
+						char outbuf1[128];
+						char c[sizeof(union STR_LONG)];
+
+						FNLO(T);
+
+rifo_init_ctor:
+						FNLO(T);
+						if(!_tcscmp(T,tag->parent->label)) {		// cmq controllo anche da fuori; questo è un costruttore da ereditare
+							PROCCheck('(');
+
+							long l3=FIn->GetPosition();
+							collectParmList(S);
+
+							if(!FNCercaCtor(tag,S,TRUE,&base))
+								PROCError(2512,T);		// 
+
+							FIn->RestorePosition(l3);
+
+							_tcscpy(MyBuf,tag->parent->label);
+							_tcscat(MyBuf,ctor);
+							_tcscat(MyBuf,to_mangle);
+							wsprintf(T,"(%s*)&this->__base,",tag->parent->label);
+
+							do {
+								FNLO(outbuf1);
+								if(*outbuf1 != ')' )
+									_tcscat(T,outbuf1);
+								} while(*outbuf1 && *outbuf1 != ')' && *outbuf1 != ';' && *outbuf1 != '{');		// in teoria cerco solo la (
+							if(T[_tcslen(T)-1] == ',')
+								T[_tcslen(T)-1] = 0;
+
+							PROCOper(LINE_TYPE_CALL,MyBuf,T,NULL,"chiamo altro",LINE_IS_NORMAL);
+
+							if(*T == ';') 		// 
+								PROCWarn /*PROCError*/(2535,T);		// dice errore o warning
+							if(*FNLA(T) == ',') {
+								FNLO(T);
+								goto rifo_init_ctor;
+								}
+							}
+						else if(v=FNCercaVar(tag,T,&base)) {		// questo è un membro da inizializzare
+							if(!base) {		// altrimenti vuol dire che c'è, ma nella base e quindi non accettabile
+
+								if(v->classe == CLASSE_MEMBER_STATIC)
+									PROCError(2438,T);
+								// dare errore se 2 volte lo stesso  PROCError(2437,T);
+								PROCCheck('(');
+								*outbuf1=0;
+								FNEvalExpr(outbuf1,15,c);
+								_tcscpy(MyBuf,"this->");
+								_tcscat(MyBuf,T);
+								PROCOper(LINE_TYPE_ISTRUZIONE,MyBuf,"=",outbuf1);
+
+								PROCCheck(')');
+								if(*FNLA(T) == ',') {
+									FNLO(T);
+									goto rifo_init_ctor;
+									}
+								}
+							else
+								PROCError(2614,T);
+							}
+						else
+							PROCError(2614,T);
+						}
+
+						
+					if(V->size>0)
+						PROCOper(LINE_TYPE_ISTRUZIONE,varType,"__retval");
 
 //				else
 //     		  FIn->Seek(-1,SEEK_CUR);
@@ -1809,7 +2143,7 @@ skip_var:
     		PROCOper(LINE_TYPE_COMMENTO,"----------------------------------------");
 	// serve quando la funzione è vuota
 //				OldTX[0].TX=LastOut;
-				if(!_tcscmp(nome,"main")) {		// idem
+				if(!_tcscmp(nome,main_name)) {		// idem
 					PROCOper(LINE_TYPE_CALL,"__global_constructors",NULL,NULL,NULL,LINE_IS_NORMAL);
 					PROCOper(LINE_TYPE_FUNCTION_DECLARATION,"void","__global_constructors",NULL,NULL,LINE_IS_NORMAL);
 					if(AutoOff>(2*4)) {		// idem
@@ -1817,7 +2151,7 @@ skip_var:
 						V=FNCercaVar("_CLArgs",FALSE);
 	  				if(!V)
 		 					V=PROCAllocFunzProto("_CLArgs",VARTYPE_FUNC_USED | VARTYPE_PLAIN_INT,4);
-	      			PROCOper(LINE_TYPE_CALL,"_CLArgs");
+      			PROCOper(LINE_TYPE_CALL,"_CLArgs");
 						PROCOper(LINE_TYPE_ISTRUZIONE,"argc"); // prima argc
 						PROCOper(LINE_TYPE_ISTRUZIONE,"argv"); // poi argv
 						}
@@ -1836,13 +2170,26 @@ skip_var:
 					}
 				FIn->RestorePosition(t);
 				__line__=ol;
+				if(V->isInTag && V->classe != CLASSE_MEMBER_STATIC) {
+					_tcscpy(outbuf,V->isInTag->label);
+					_tcscat(outbuf," *this");
+					}
+				else
+					*outbuf=0;
 				FNLO(T);
 				if(*T != ')') {
+					if(V->isInTag) {
+						if(strstr(V->name,dtor))		// eh beh!
+							PROCError(2831);
+						_tcscat(outbuf,",");
+						}
+//					else
+						*V->parm.ptr32=0;		// no, per this
 				  if(*T=='.' || FNIsType(T) != VARTYPE_NOTYPE) {		// per ...
 // PROTOTIPI e basta
-  					*V->parm.ptr32=0;
-						*outbuf=0;
+						*V->parm.ptr32=0;		// no, per this
 					  do {
+							struct TAGS *tag2;
 							if(*T == '.') {            // gestisco ... variable parm
 								int *parmPtr;
 								parmPtr=V->parm.ptr32;
@@ -1858,8 +2205,8 @@ skip_var:
 							  }
 							Size=INT_SIZE;
 							Type=0;
-							tag=NULL;
-							PROCGetType(outbuf,&Type,&Size,&tag,dim,&attrib,t);
+							tag2=NULL;		// non perdo quello in entrata!
+							f=PROCGetType(outbuf,&Type,&Size,&tag2,dim,&attrib,t);
 
 							if(debug) {
 								char *tmp=(char*)(tag ? tag->label : "");/*NON CI PIACE @#£$% si incasina la printf del log...*/
@@ -1922,21 +2269,24 @@ skip_var2:
 						if(V->isInTag) {// HMM NON sembra più passare di qua... mai.. verificare e togliere
 							struct VARS *v;
 							char MyBuf2[64];
+							struct TAGS *inBase;
+
 							PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"COSTRUISCO",NULL,NULL,NULL,LINE_IS_NORMAL);
 							FIn->RestorePosition(t);
 							__line__=ol;
 							_tcscpy(MyBuf,V->isInTag->label);
 							_tcscat(MyBuf,ctor);
-							_tcscat(MyBuf,"__");
+							_tcscat(MyBuf,to_mangle);
 							collectParmList(MyBuf);
-							v=FNCercaVar(MyBuf,FALSE);
+							v=FNCercaVar(MyBuf,FALSE,&inBase);
 							FIn->RestorePosition(t);
 							__line__=ol;
 							if(!v)
 								PROCError(2512,"ctor");
 							else
-								PROCUsaFun(v,TRUE);
-							PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,NULL,NULL,NULL,LINE_IS_NORMAL);
+								PROCUsaFun(outbuf,v,TRUE);
+//							PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,NULL,NULL,NULL,LINE_IS_NORMAL);
+							PROCOper(LINE_TYPE_CALL,v,outbuf,NULL,LINE_IS_NORMAL);
 							}
 						}
   				}
@@ -1986,8 +2336,9 @@ skip_var2:
 							PROCOut1(Type & VARTYPE_CONST ? FO3 : FO1,"\tALIGN 4",NULL);		// 
 						}
 					else {
-						p=strstr(S,"\tD");
-						*(p+4)=0;
+						//p=strstr(S,"\tD");
+
+						//*(p+4)=0;
 						/*struct CONS myC=*/FNGetConst(MyBuf,1);
 						_tcscat(S,MyBuf);
 						}
@@ -2004,6 +2355,19 @@ skip_var2:
 					FNEvalExpr(outbuf,14,MyBuf);	// NO = qua, cmq finire tutto
 					PROCOper(LINE_TYPE_ISTRUZIONE,outbuf);
 					break;
+
+				case CLASSE_MEMBER:
+				case CLASSE_MEMBER_VIRTUAL:
+					break;
+				case CLASSE_MEMBER_STATIC:
+/*					_tcscat(outbuf,"=");		// in effetti non passo di qua! siccome è già stata definita PER FORZA, aggiungo solo
+					do {
+						FNLO(MyBuf);
+						if(*MyBuf != ';')
+							_tcscat(outbuf,MyBuf);
+						} while(*MyBuf && *MyBuf != ';');
+					FIn->unget(';');*/
+					break;
 				}
 		  break;
 		default:
@@ -2016,14 +2380,19 @@ do_declare_ext:
 	if(!dontAllocate) {
 		if(*S) {
 			if(Type & VARTYPE_CONST) {
-				PROCOut1(FO3,S," ;",nome,NULL);
+//				PROCOut1(FO3,S," //",V->label,NULL);
+//				PROCOper(LINE_TYPE_LABEL,outbuf,NULL,NULL,V->label,LINE_IS_NORMAL);
 				}
 			else {
 				if(!isInitialized)
-					PROCOut1(FO2,S," ;",nome,NULL);
+//					PROCOut1(FO2,S," //",V->label,NULL);
+//					PROCOper(LINE_TYPE_DATA,outbuf,NULL,NULL,V->label,LINE_IS_NORMAL);
+;
 				else
-					PROCOut1(FO1,S," ;",nome,NULL);
+//					PROCOut1(FO1,S," //",V->label,NULL);
+//					PROCOper(LINE_TYPE_DATA_DEF,outbuf,NULL,NULL,V->label,LINE_IS_NORMAL);
 		//				PROCOut1((*S==' ' /*|| *S=='\t' pare ok così 2025*/ ) ? FO2 : FO1,S," ;",nome,NULL);
+		;
 				}
 
 			}
@@ -2168,7 +2537,7 @@ rifoStmt:
 			break;
 		case 'a_':
 			if(!_tcscmp(TS,"_asm")) {                 // CODICE Assembly
-				PROCOper(LINE_TYPE_ISTRUZIONE,"asm ");
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"asm ");
 				if(*FNLA(MyBuf) == '{') {
 					FNLO(MyBuf);
 				  FNLA(MyBuf);
@@ -2194,7 +2563,7 @@ rifoStmt:
 		  break;
 		case 'rb':
 			if(!_tcscmp(TS,"break")) {
-				PROCOper(LINE_TYPE_ISTRUZIONE,"\t\tbreak");
+				PROCOper(LINE_TYPE_ISTRUZIONE,"\tbreak");
 				T1=InBlock;
 				while(T1) {
 					if(*OldTX[T1].B) {
@@ -2220,7 +2589,7 @@ rifoStmt:
 					i=*((int *)p);
 					
 					c=FNGetConst(C,0);
-					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t\tcase",C,":");
+					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"case",C,":");
 					if((OldTX[InBlock].C[1]==1 && abs(c) & 0xffffff00) || (OldTX[InBlock].C[1]==2 && abs(c) & 0xffff0000))
 						PROCWarn(2053);
 					if(OldTX[InBlock].C[1]==1)
@@ -2261,7 +2630,7 @@ rifoStmt:
 			break;
 		case 'ed':
 			if(!_tcscmp(TS,"default")) {
-				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t\tdefault:");
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\tdefault:");
 				_tcscpy(T1S,OldTX[InBlock].T);
 				if(*T1S != '&') {
 					PROCError(2047);
@@ -2327,12 +2696,15 @@ rifoStmt:
 				_tcscpy(TS,OldTX[I].T+1);
 				*TS='E'; TS[6]=0;	// e tolgo _T/_F
 	//		_tcscat(TS,"_else");
-				if(*FNLA(MyBuf) == '{')
+				i=*FNLA(MyBuf) == '{';
+				if(i)
 					PROCOper(LINE_TYPE_ISTRUZIONE_CONT," {");
 //				PROCOper(LINE_TYPE_JUMP,"jr",TS);
 				*MyBuf=' ';
 				_tcscpy(MyBuf+1,TS);
 				PROCLoops(MyBuf,"","");
+				if(i)
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t}",NULL,NULL,MyBuf);
 				}
 			else
 				goto noStmt;
@@ -2390,7 +2762,7 @@ rifoStmt:
 					if(*MyBuf == ',')
 						PROCCheck(',');
 					else if(*MyBuf == '}') {
-						PROCOper(LINE_TYPE_DICHIARAZIONE,"}");
+						PROCOper(LINE_TYPE_DICHIARAZIONE,"\t}");
 						PROCCheck('}');
 						break;
 						}
@@ -2406,12 +2778,12 @@ rifoStmt:
 			break;
 		case 'of':
 			if(!_tcscmp(TS,"for")) {
-				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\tfor(");
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"for(");
 				PROCCheck('(');
 	//		*MyBuf=0;
 				*outbuf=0;
 				FNEvalExpr(outbuf,16,MyBuf);              // 1° expr
-				PROCOper(LINE_TYPE_ISTRUZIONE,outbuf);
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,";");
 				PROCCheck(';');     //    FNLO(TS);
 				l=FIn->GetPosition();
 				I=1;
@@ -2437,25 +2809,28 @@ rifoStmt:
 		//      _tcscpy(MyBuf,"!");
 					_tcscpy(MyBuf,T1S);
 					FNEvalCond(outbuf,MyBuf,T1S,TRUE);
+					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,";");
 					}
 				PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"endfor");
 				PROCCheck(';');
 	//		*MyBuf=0;
 				*outbuf=0;
 				FNEvalExpr(outbuf,16,MyBuf);                 // 2° expr
-				PROCOper(LINE_TYPE_ISTRUZIONE,outbuf);
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,")");
 				_tcscpy(MyBuf,T1S);
 				_tcscat(MyBuf,"_");
-				PROCOper(LINE_TYPE_JUMP,"}",NULL,NULL,MyBuf);
 				FIn->RestorePosition(l1);
 				__line__=ol;
 				_tcscpy(OldTX[InBlock+1].T,T1S);
 	//			_tcscat(T1S,"_");  
-				if(*FNLA(MyBuf) == '{')
+				i=*FNLA(MyBuf) == '{';
+				if(i)
 					PROCOper(LINE_TYPE_ISTRUZIONE_CONT," {");
 				_tcscpy(MyBuf,T1S);
 				_tcscat(MyBuf,"_");  
 				PROCLoops(NULL,T1S,MyBuf);
+				if(i)
+					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t}",NULL,NULL,MyBuf);
 				}
 			else
 				goto noStmt;
@@ -2474,7 +2849,7 @@ rifoStmt:
 		  break;
 		case 'fi':
 			if(!*(TS+2)) {
-				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\tif(");
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"if(");
 				PROCCheck('(');
 				FNGetLabel(TS,2,-1);
 			//    *MyBuf='!';
@@ -2482,13 +2857,16 @@ rifoStmt:
 				*outbuf=0;
 				FNEvalCond(outbuf,MyBuf,TS,TRUE);
 				PROCCheck(')');
-				if(*FNLA(MyBuf) == '{')
-					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,") {");
+				i=*FNLA(MyBuf) == '{';
+				if(i)
+					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,") {\n");
 				else
 					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,outbuf,")");
 				*MyBuf='%';
 				_tcscpy(MyBuf+1,TS);
 				PROCLoops(MyBuf,"","");
+				if(i)
+					PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t}",NULL,NULL,MyBuf);
 				}
 			else
 				goto noStmt;
@@ -2497,7 +2875,7 @@ rifoStmt:
 			if(!_tcscmp(TS,"pragma")) {
 				if(!*FNLO(MyBuf))
 					PROCError(2059,TS);
-				PROCOper(LINE_TYPE_ISTRUZIONE,"pragma",MyBuf);
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"pragma",MyBuf);
 				if(*FNLA(MyBuf1) == '(') {
 					PROCCheck('(');
 					if(*FNLA(MyBuf1) != ')')
@@ -2532,13 +2910,16 @@ rifoStmt:
 					i=CurrFunc->size;
 					FNEvalECast(outbuf,MyBuf,(O_TYPE*)&l,(O_SIZE*)&i);
 					FuncReturnedValue=TRUE;
-					PROCOper(LINE_TYPE_ISTRUZIONE,"\n\treturn",outbuf,NULL,NULL,LINE_IS_NORMAL);
+//					PROCOper(LINE_TYPE_ISTRUZIONE,"\n\treturn",outbuf,NULL,NULL,LINE_IS_NORMAL);
+					PROCOper(LINE_TYPE_ISTRUZIONE,"__retval=",outbuf,NULL,NULL,LINE_IS_NORMAL);
+					PROCOper(LINE_TYPE_ISTRUZIONE,"goto __return_end",NULL,NULL,NULL,LINE_IS_NORMAL);
 					}
 				else {
 					if(FNGetMemSize(CurrFunc,1)) 
 	  				PROCError(2561);
 					// anche 4715 ev.
-					PROCOper(LINE_TYPE_ISTRUZIONE,"\n\treturn",NULL,NULL,NULL,LINE_IS_NORMAL);
+//					PROCOper(LINE_TYPE_ISTRUZIONE,"\n\treturn",NULL,NULL,NULL,LINE_IS_NORMAL);
+					PROCOper(LINE_TYPE_ISTRUZIONE,"goto __return_end",NULL,NULL,NULL,LINE_IS_NORMAL);
 					}
 				PROCReturn();
 				}
@@ -2547,7 +2928,7 @@ rifoStmt:
 			break;
 		case 'ws':
 			if(!_tcscmp(TS,"switch")) {
-				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\tswitch(");
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"switch(");
 				PROCCheck('(');
 		//		*MyBuf=0;
 				l=0;
@@ -2566,10 +2947,10 @@ rifoStmt:
 				OldTX[I].flag=0;
 				OldTX[I].C[0]=0;            // salvo qui (tanto non si usa) SIZE
 				OldTX[I].C[1]=i;
-				p=OldTX[I].parm=(char *)GlobalAlloc(GPTR,1024);
-				*((int *)p)=0;
+				p=OldTX[I].parm=(char*)GlobalAlloc(GPTR,1024);
+				*((int*)p)=0;
 				PROCLoops(NULL,TS,"");
-				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\t\t}\n",NULL,NULL,"endswitch",LINE_IS_NORMAL);
+				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"}\n",NULL,NULL,"endswitch",LINE_IS_NORMAL);
 				}
 			else
 				goto noStmt;
@@ -2581,7 +2962,7 @@ rifoStmt:
 				PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"typedef",TS);
 				T1=MaxTypes;
 				*outbuf=0;
-				PROCGetType(outbuf,&Types[T1].type,&Types[T1].size,&Types[T1].tag,Types[T1].dim,&attrib,l);
+				i=PROCGetType(outbuf,&Types[T1].type,&Types[T1].size,&Types[T1].tag,Types[T1].dim,&attrib,l);
 				FNLO(MyBuf);
 				if(FNIsType(MyBuf) != VARTYPE_NOTYPE)
 					PROCError(2026,MyBuf);
@@ -2608,7 +2989,7 @@ rifoStmt:
 					PROCCheck(')');
 	//			  if(i)
 //						PROCOper(LINE_TYPE_JUMP,"jmp",OldTX[I].T+1);
-					PROCOper(LINE_TYPE_JUMP,"\t\t} while(",outbuf,")");
+					PROCOper(LINE_TYPE_JUMP,"} while(",outbuf,")");
 					PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"enddo");
 					*OldTX[I].T=0;
 					*OldTX[I].B=0;
@@ -2621,9 +3002,9 @@ rifoStmt:
 					_tcscpy(MyBuf,TS);
 					FNEvalCond(outbuf,MyBuf,TS,TRUE);
 					if(*FNLA(MyBuf) == '{')
-						PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\twhile(",outbuf,") {");
+						PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"while(",outbuf,") {");
 					else
-						PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"\twhile(",outbuf,")");
+						PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"while(",outbuf,")");
 					PROCCheck(')');
 					PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"beginwhile");
 					_tcscpy(MyBuf,TS);
@@ -2658,63 +3039,96 @@ noStmt:
 				}*/
 			else if(*MyBuf==':' && MyBuf[1] == ':') {		// per ::
 				struct TAGS *tag;
-				struct VARS *v;
+				struct VARS *v,*newVar;
 				O_DIM dim;
+				char mangle[64];
+				struct TAGS *inBase;
+
 				if(tag=FNCercaAggr(TS,FALSE)) {		// qua solo ctor e dtor, v in Decl per altri casi
+					*outbuf=0;
 					FNLO(MyBuf);
 					l=FIn->GetPosition();
 					FNLA(MyBuf);
+					*T1S=0;
 					if(*MyBuf == '~') {
 						FNLO(T1S);
 						l=FIn->GetPosition();
 						FNLA(MyBuf);
 						}
 					if(_tcscmp(MyBuf,TS)) {
-						if(!InBlock)		// se segue un metodo qualunque, posso accettarlo solo DENTRO un blocco (chiamata membro statico, e v. pure { al fondo
-							PROCError(2143,MyBuf);
+						if(!InBlock)		// può solo essere ctor o dtor, oppure var. 
+							PROCError(2143,MyBuf);		// senza tipo, errore in C++ (anche se VC98 lo prendeva come int, v. anche altrove
 						else
 							goto no_class_decl;
 						}
-					else {
+					 {
 						if(*T1S != '~')
 							_tcscpy(MyBuf,ctor);
 						else 
 							_tcscpy(MyBuf,dtor);
 						FNLO(MyBuf1);
-						PROCCheck('(');
-						_tcscat(MyBuf,"__");
-						collectTypeList(MyBuf);
-						_tcscat(TS,MyBuf);
-						v=FNCercaVar(TS,FALSE);
-						FIn->RestorePosition(l);
-						__line__=ol;
-						if(v)
-							PROCError(2086,"ctor");
-						else {
-//							PROCCheck('(');
-							if(*T1S != '~')
-								_tcscpy(MyBuf,ctor);
-							else 
-								_tcscpy(MyBuf,dtor);
-							v=PROCDclVar(outbuf,CLASSE_MEMBER,0,VARTYPE_FUNC/*TYPE_NULL*/,SIZE_NULL,tag,dim,0,FALSE,MyBuf);
-							PROCOper(LINE_TYPE_FUNCTION_DECLARATION,NULL,v->name,outbuf,NULL,LINE_IS_NORMAL);
-	//						*decor=0;
-							if(*FNLA(MyBuf) == '{') {
-								PROCCheck('{');
-								Declaring=TRUE;
+						if(*FNLA(MyBuf1) == '(') {
+							PROCCheck('(');
+							_tcscat(MyBuf,to_mangle);
+							collectTypeList(mangle);
+							_tcscat(MyBuf,mangle);
+							_tcscat(TS,MyBuf);
+							v=FNCercaVar(TS,FALSE,NULL);
+							FIn->RestorePosition(l);
+							__line__=ol;
+							if(v && v->type & VARTYPE_FUNC_USED)
+								PROCError(2086,"ctor");
+							else {
+	//							PROCCheck('(');
+								if(*T1S != '~')
+									_tcscpy(MyBuf,ctor);
+								else 
+									_tcscpy(MyBuf,dtor);
+								newVar=PROCDclVar(outbuf,CLASSE_MEMBER,0,VARTYPE_FUNC/*TYPE_NULL*/,SIZE_NULL,tag,dim,0,FALSE,
+									MyBuf,mangle);
+								if(!v)
+									PROCOper(LINE_TYPE_FUNCTION_DECLARATION,NULL,newVar->name,outbuf,NULL,LINE_IS_NORMAL);
+		//						*decor=0;
+								if(*FNLA(MyBuf1) == ':') {
+									while(*FNLO(MyBuf1) != ';' && *MyBuf1 != '{')
+										;
+									FIn->unget(*MyBuf1);
 
-								PROCBlock();
-								if(*FNLA(TS)=='}') {
-									PROCCheck('}');
-									wsprintf(MyBuf,"\t};\n");
-									PROCOper(LINE_TYPE_DATA_DEF,MyBuf);
+									}
+								if(*FNLA(MyBuf) == '{') {
+									PROCCheck('{');
+									Declaring=TRUE;
+
+									PROCBlock();
+									if(*FNLA(TS)=='}') {
+										PROCCheck('}');
+										wsprintf(MyBuf,"\t};\n");
+										PROCOper(LINE_TYPE_DATA_DEF,MyBuf);
+										}
+									}
+								else {
+									PROCCheck(';');
+									// era un metodo! basta così?
+									goto no_class_decl;
 									}
 								}
-							else {
+							}
+						else {
+							O_TYPE type=0;
+							O_SIZE size=4;
+							FIn->RestorePosition(l);
+							__line__=ol;
+							FNLO(MyBuf);
+							v=FNCercaVar(MyBuf,FALSE,NULL);
+							if(!v)
+								PROCError(2039,MyBuf);
+							FIn->RestorePosition(l);
+							__line__=ol;
+								newVar=PROCDclVar(outbuf,CLASSE_MEMBER_STATIC,0,type,size,tag,dim,0,FALSE,
+									NULL,NULL);
+//								PROCOper(LINE_TYPE_DATA,newVar->name,outbuf,NULL,NULL,LINE_IS_NORMAL);
+								// e mettere extern all'altra, o togliere
 								PROCCheck(';');
-								// era un metodo! basta così?
-								goto no_class_decl;
-								}
 							}
 						}
 
@@ -2729,14 +3143,20 @@ no_class_decl:
 				}
 			break;  
 		}
+
 	if(!CurrFunc) {
 //		PROCError(2062,TS);		// oppure provare a dichiarare... ma NON eseguire! anche se funzione
 		}
+
   if(OutSource) {    
 		wsprintf(MyBuf,"|%5d| : ",__line__);
 		FNGetLine(OldTextp,MyBuf+10);
 //		MyBuf[_tcslen(MyBuf)-2]=0;		// tolgo CR se no diventa doppio
 		PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,MyBuf);
+		}
+
+	if(c_mode==-1) {
+		c_mode=0;
 		}
   return TRUE;
   }
@@ -2914,6 +3334,7 @@ int CPlusMinus::PROCLoops(const char *T, const char *T1, const char *T2) {
 		}
   _tcscpy(OldTX[I].B,T1);
   _tcscpy(OldTX[I].C,T2);
+	OldTX[I].flag=0;
   if(*FNLA(MyBuf) == '{') {
 		Declaring=TRUE;
 		if(I)
@@ -2930,7 +3351,7 @@ rifoIsStmt:
 		if(FNIsStmt()) {
 	  	if(*FNLA(MyBuf) == ';')
 				PROCCheck(';');
-	  	if(!_tcscmp(FNLA(MyBuf),"\telse")) {      // è l'unico caso in cui lego uno stmt al successivo
+	  	if(!_tcscmp(FNLA(MyBuf),"else")) {      // è l'unico caso in cui lego uno stmt al successivo
 		  	goto rifoIsStmt;
 		  	}
 	  	}
@@ -2951,8 +3372,57 @@ rifoIsStmt:
   return 0;
   }
  
+int8_t CPlusMinus::CmpDecorated(const char *s1,const char *s2) {
 
-struct VARS *CPlusMinus::FNCercaVar(const char *N, bool M) {
+	// finire gestendo il "reference" ossia R e magari restituendo un valore di "somiglianza"
+	return _tcscmp(s1,s2);
+
+	// gemini 10/26
+  const char *p1 = s1;
+  const char *p2 = s2;
+
+  // 1. Confronta il nome base prima del mangling (es. "foo__")
+  while(*p1 && *p2 && (*p1 == *p2)) {
+    if(*p1 == '_' && *(p1+1) == '_') {
+      p1 += 2;
+      p2 += 2;
+      break; // Trovato il separatore "__", passiamo ai tipi
+      }
+    p1++;
+    p2++;
+    }
+
+  // Se i nomi base differiscono, non c'è match
+  if(*p1 == '\0' || *p2 == '\0' || (p1 - s1 != p2 - s2 && *(p1-1) != '_')) {
+      // Gestisci eventuale disallineamento prima di '__'
+	  }
+
+  // 2. Analisi dei decoratori/tipi carattere per carattere
+  bool isRef = false;
+
+    // Se la firma nel simbolo dichiara un Reference ('R'), lo riconosciamo
+  if(*p2 == 'R') {
+    isRef = true;
+    p2++; // Avanzi solo il puntatore della firma dichiarata
+    }
+
+    // 3. Confronta il resto dei tipi (es. "i" con "i", "Pi" con "Pi")
+  while(*p1 && *p2) {
+    if(*p1 != *p2)
+      return -1; // Tipi incompatibili
+    p1++;
+    p2++;
+    }
+
+  // Entrambe le stringhe devono finire insieme
+  if(*p1 == '\0' && *p2 == '\0')
+    return isRef ? 1 : 0; // 0 = Match esatto, 1 = Match via Reference
+
+  return -1;
+
+	}
+
+struct VARS *CPlusMinus::FNCercaVar(const char *N, bool M, struct TAGS **base) {
 // M% TRUE=RICERCA NEL BLOCCO, FALSE RICERCA GLOBALE
   register int Bl;
   struct VARS *F, *V;
@@ -2961,6 +3431,8 @@ struct VARS *CPlusMinus::FNCercaVar(const char *N, bool M) {
   
   Bl=InBlock;
   F=CurrFunc;
+	if(base)
+		*base=NULL;
   do {       
 		if(!Bl) {
 		  F=0;
@@ -2970,7 +3442,7 @@ struct VARS *CPlusMinus::FNCercaVar(const char *N, bool M) {
 //        myLog->print(0,"Cercavar\a: %s <> %s, livello %u",N,V->name,Bl);
 			if(!Bl) {
 				struct VARS *v;
-				if(v=FNCercaVar(V->isInTag,N)) {
+				if(v=FNCercaVar(V->isInTag,N,base)) {	// forse serve anche sotto, se classe definita localmente
 					return v;
 					}
 				else {
@@ -2990,7 +3462,7 @@ struct VARS *CPlusMinus::FNCercaVar(const char *N, bool M) {
 						//else
 
 						if(V->block==Bl && (/*!Bl inutile || */ V->blockId==OldTX[Bl].id)) {
-							if(!_tcscmp(N,V->name)) { 
+							if(!CmpDecorated(N,V->name)) { 
 								return V;
 								}
 							}
@@ -3006,22 +3478,77 @@ struct VARS *CPlusMinus::FNCercaVar(const char *N, bool M) {
   return NULL;
   }
  
-struct VARS *CPlusMinus::FNCercaVar(struct TAGS *tag,const char *N) {
+struct VARS *CPlusMinus::FNCercaVar(struct TAGS *tag,const char *N,struct TAGS **base) {
   struct VARS *F, *V;
 
- 	V=Var;
-	while(V) {
-		if(V->isInTag==tag) {
+	if(base)
+		*base=NULL;
 
-			// controllare blocco e funzione!
-			if(!_tcscmp(N,V->name)) { 
-				return V;
+	do {
+ 		V=Var;
+		while(V) {
+			if(V->isInTag==tag) {
+
+				// controllare blocco e funzione!
+				if(!CmpDecorated(N,V->name)) { 
+					if(base) {
+						if(*base)
+							V->hasBase=*base;
+						else
+							V->hasBase=NULL;
+						}
+					return V;
+					}
 				}
+			V=V->next;
 			}
-		V=V->next;
-		}
+		if(base && tag)
+			*base=tag->parent;
+		} while(tag && (tag=tag->parent));
 
   return NULL;
+  }
+ 
+struct VARS *CPlusMinus::FNCercaFunz(struct TAGS *tag,const char *N,const char *F,struct TAGS **base) {
+  struct VARS *V;
+  char T[256];
+
+	if(base)
+		*base=NULL;
+
+	do {
+		wsprintf(T,"%s_%s__%s",tag->label,N,F);
+ 		V=Var;
+		while(V) {
+			if(V->isInTag==tag) {
+
+				// controllare blocco e funzione!
+				if(!CmpDecorated(T,V->name)) { 
+					if(base) {
+						if(*base)
+							V->hasBase=*base;
+						else
+							V->hasBase=NULL;
+						}
+					return V;
+					}
+				}
+			V=V->next;
+			}
+		if(base && tag)
+			*base=tag->parent;
+		} while(tag && (tag=tag->parent));
+
+  return NULL;
+  }
+ 
+struct VARS *CPlusMinus::FNCercaCtor(struct TAGS *tag,const char *M,bool is_ctor,struct TAGS **base) {
+  //char T[256];
+
+//	wsprintf(T,"%s%s__%s",tag->label,is_ctor ? ctor : dtor,M);
+
+	return FNCercaFunz(tag,is_ctor ? ctor+1 : dtor+1,M,base);		// salto "_" !
+
   }
  
 struct TAGS *CPlusMinus::FNCercaAggr(const char *N,bool M) {
@@ -3057,19 +3584,21 @@ struct VARS *CPlusMinus::PROCAllocVar(const char *N, O_TYPE Type, enum VAR_CLASS
   struct VARS *V;
   char MyBuf[64],MyBuf1[64];
   
-  V=(struct VARS *)GlobalAlloc(GPTR,sizeof(struct VARS)); 
+  V=(struct VARS*)GlobalAlloc(GPTR,sizeof(struct VARS)); 
   if(!V) {
 fineMem:
     PROCError(1001,"Fine memoria VARS");
     }
   if(Var) {
     LVars->next=V;
+		V->prev=LVars;
     LVars=V;
     }
   else {
     LVars=Var=V;
+		V->prev=(struct VARS*)NULL;
     }
-  V->next=(struct VARS *)NULL;
+  V->next=(struct VARS*)NULL;
  
   if(debug)  
     myLog->print(0,"Alloco: %s, size %d",N,Size);
@@ -3093,8 +3622,10 @@ fineMem:
 		V->blockId=OldTX[InBlock].id;
   V->func.func=CurrFunc;
   V->classe=Class;
+	V->hasBase=NULL;
   V->modif=Modif;
 	V->definition=NULL;
+	V->members=NULL;
   if(Type & VARTYPE_FUNC) {			// anche Pointer
   	if(!(V->parm.ptr32=(int*)GlobalAlloc(GPTR,256)))
   	  goto fineMem;
@@ -3141,7 +3672,7 @@ struct VARS *CPlusMinus::PROCAllocFunzProto(const char *name, O_TYPE type, O_SIZ
 struct VARS *CPlusMinus::PROCAllocGoto(const char *label) {
 	struct VARS *g,*g2,*g3;
 
-	g=(struct VARS *)GlobalAlloc(GPTR,sizeof(struct VARS)); 
+	g=(struct VARS*)GlobalAlloc(GPTR,sizeof(struct VARS)); 
 	if(!g) {
 		PROCError(1001,"Fine memoria GOTO");
 		}
@@ -3217,25 +3748,24 @@ int CPlusMinus::PROCCast(O_TYPE T1, O_SIZE S1, O_TYPE *T2, O_SIZE *S2, int8_t re
   
 	reg2=reg+1;		// per Z80 e/o 8086, finire!
 
-  S1=FNGetMemSize(T1,S1,0/*dim*/,1);
-  s2=FNGetMemSize(*T2,*S2,0/*dim*/,1);
+  if(*S2 != S1 || T1 != *T2)	// gestire array vs ptr, aggregati ecc
+							PROCOper(LINE_TYPE_ISTRUZIONE | LINE_TYPE_COMMENTO,"cast");
+
+  S1=FNGetMemSize(T1,S1,NULL/*dim*/,1);
+  s2=FNGetMemSize(*T2,*S2,NULL/*dim*/,1);
   if((T1 & VARTYPE_UNSIGNED) ^ (*T2 & VARTYPE_UNSIGNED))
 		PROCWarn(4018);
+
+
   if(s2 != S1 /*|| (T1 & VARTYPE_POINTER != T2 & VARTYPE_POINTER) sottinteso quindi */) {
 		switch(S1) {
 		  case 1:
-						PROCOper(LINE_TYPE_ISTRUZIONE,"AND.w");
 				break;
 		  case 2:
 				switch(s2) {
 				  case 1:
-						if(*T2 & VARTYPE_UNSIGNED || *T2 & VARTYPE_IS_POINTER)
-							PROCOper(LINE_TYPE_ISTRUZIONE,"AND.w");
-						else	
-							PROCOper(LINE_TYPE_ISTRUZIONE,"SE.w");
 						break;
 				  case 4:
-							PROCOper(LINE_TYPE_ISTRUZIONE,"AND.d");
 						break;
 				  default:
 						break;
@@ -3244,19 +3774,8 @@ int CPlusMinus::PROCCast(O_TYPE T1, O_SIZE S1, O_TYPE *T2, O_SIZE *S2, int8_t re
 		  case 4:
 				switch(s2) {
 				  case 1:
-						if(*T2 & VARTYPE_UNSIGNED || *T2 & VARTYPE_IS_POINTER) {
-							PROCOper(LINE_TYPE_ISTRUZIONE,"AND.d");
-							}
-						else {
-							PROCOper(LINE_TYPE_ISTRUZIONE,"SE.w");
-							PROCOper(LINE_TYPE_ISTRUZIONE,"SE.d");
-							}
 						break;
 				  case 2:
-						if(*T2 & VARTYPE_UNSIGNED || *T2 & VARTYPE_IS_POINTER)
-							PROCOper(LINE_TYPE_ISTRUZIONE,"AND.d");
-						else	
-							PROCOper(LINE_TYPE_ISTRUZIONE,"SE.d");
 						break;
 				  default:
 						break;
@@ -3283,7 +3802,7 @@ struct CONS *CPlusMinus::FNAllocCost(const char *A, uint8_t mode, O_TYPE Type) {
   char MyBuf[256],MyBuf2[256];
   struct CONS *C;
   
-  C=(struct CONS *)GlobalAlloc(GPTR,sizeof(struct CONS)); 
+  C=(struct CONS*)GlobalAlloc(GPTR,sizeof(struct CONS)); 
   if(!C) {
     PROCError(1001,"Fine memoria CONS");
     }
@@ -3323,7 +3842,7 @@ struct ENUMS *CPlusMinus::FNAllocEnum(const char *tag, const char *A, uint32_t v
   char MyBuf[256],MyBuf2[256];
   struct ENUMS *C;
   
-  C=(struct ENUMS *)GlobalAlloc(GPTR,sizeof(struct ENUMS)); 
+  C=(struct ENUMS*)GlobalAlloc(GPTR,sizeof(struct ENUMS)); 
   if(!C) {
     PROCError(1001,"Fine memoria ENUMS");
     }
@@ -5159,23 +5678,25 @@ O_SIZE CPlusMinus::getPtrSize(O_TYPE t) {
 int CPlusMinus::PROCReadD0(char *outbuf,struct VARS *V, O_TYPE T, O_SIZE S, int16_t cond, int ofs, bool asPtr) {   // m=0 se norm, 1 se condiz.
 
 
-	PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"ReadDO");
+	//PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"ReadDO");
 	if(V)
 		_tcscat(outbuf,V->name);
 //	PROCOper(LINE_TYPE_ISTRUZIONE,V);
 	return 1;
 	}
-int CPlusMinus::PROCStoreD0(char *outbuf,struct VARS *V, int8_t RQ, struct VARS *RVar, union STR_LONG *RCost, uint16_t ofs2) {
+int CPlusMinus::PROCStoreD0(char *outbuf,const char *op,struct VARS *V, int8_t RQ, struct VARS *RVar, union STR_LONG *RCost, uint16_t ofs2) {
 
-	PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"StoreDO");
+	//PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"StoreDO");
 	if(V)
 		_tcscat(outbuf,V->name);
+	if(op)
+		_tcscat(outbuf,op);
 //	PROCOper(LINE_TYPE_ISTRUZIONE,V);
 	return 1;
 	}
 int CPlusMinus::PROCGetAdd(int8_t VQ, struct VARS *V, int ofs, bool asPtr) {
 
-	PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"GetAdd");
+//	PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,"GetAdd");
 	//if(V)
 		//_tcscat(outbuf,V->name);
 //	PROCOper(LINE_TYPE_ISTRUZIONE,V);

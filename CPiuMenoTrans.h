@@ -170,8 +170,8 @@ enum VAR_TYPES {		// v. anche class CPlusMinus
 	VARTYPE_NOT_A_POINTER=(uint32_t)(~(VARTYPE_IS_POINTER)),			// mask
 
 /* --- FLAG E QUALIFICATORI (da 0x10 in poi) --- */
-  VARTYPE_IS_REFERENCE       = 0x10,           // & (L-value reference C++)
-  VARTYPE_IS_RVALUE_REF      = 0x20,           // && (R-value reference C++, opzionale)
+  VARTYPE_REFERENCE       = 0x10,           // & (L-value reference C++)
+  VARTYPE_RVALUE_REF      = 0x20,           // && (R-value reference C++, opzionale)
 		
 	VARTYPE_FUNC_POINTER=0x40,
 	VARTYPE_FUNC_BODY=0x80,
@@ -226,10 +226,13 @@ struct VARS {
 		} parm;
   struct TAGS *isInTag;         // se <>0, la var. è un membro della struct tag
   struct TAGS *hasTag;      // questo indica il tag di questa struct
+  struct TAGS *hasBase;      // se è presente in una class base (viene assegnato da CercaVar ogni volta
   O_DIM dim;							// dim TOTALE dell'array o aggr
   uint8_t attrib;
 	uint8_t inlineCnt;
 	struct LINE *definition;		// dove è definita (usato da funzioni inlined)
+  struct VARS *members;		// var locali di una funzione
+  struct VARS *prev;
   struct VARS *next;
   };
 
@@ -453,6 +456,7 @@ public:
 
 protected:
 	int8_t bExit;
+	int8_t c_mode;		// se siamo in un blocco extern "C", a che livello InBlock
 	char buffer[128];
   COutputFile *FPre;
 	CSourceFile *FIn;
@@ -461,6 +465,10 @@ protected:
 	COutputFile *FLst,*FErr;
 	static struct ERRORE Errs[];
 	static char *dtor,*ctor;
+	static char *to_mangle;
+	static char *ptr_to_base,*ptr_to_base2;
+	static char *main_name;
+	static char *malloc_name,*free_name;
 	int8_t Warning;
 //  struct LINE *RootOut,*LastOut;
 	struct VARS *Var;
@@ -496,7 +504,7 @@ protected:
 	uint8_t debug,verbose;
 	uint8_t PreProcOnly;          // PREPROCESSA SOLO SU stdout  -E
 	uint8_t PreProcCommenti;			// inserisce commenti nel .i e quindi in output
-	uint8_t CheckStack;            // INSERISCE LO STACK PROBE    -Gs
+	bool CheckStack;            // INSERISCE LO STACK PROBE    -Gs
 	uint8_t OutSource;             // INSERISCE LE RIGHE C NELL'OUTPUT  -Fc
 	uint8_t OutAsm;             // crea un file asm senza righe C (non usato) -Fa
 	uint8_t OutList;               // CREA FILE LISTING          -Fl
@@ -507,6 +515,7 @@ protected:
 	uint8_t StorageDefault;				// storage class di default (finire)
 	uint8_t StructPacking;				// packing delle struct
 	uint16_t Optimize;
+	bool UsesMalloc;
 	static struct TIPI Types[MAX_TIPI];
 	static struct OPERANDO Op[];
 	uint16_t numErrors,numWarnings;
@@ -521,7 +530,7 @@ public:
 	int PROCBlock();
 	int PROCIsDecl();
 	struct VARS *PROCDclVar(char *,enum VAR_CLASSES, uint8_t, O_TYPE type, O_SIZE size, 
-		struct TAGS *, O_DIM dim, uint32_t attrib, bool isparm, const char *decor);
+		struct TAGS *, O_DIM dim, uint32_t attrib, bool isparm, const char *decor, const char *mangle);
 	int subAsm(char *);
 	int FNIsStmt();
 	char *FNGetLabel(char *,uint8_t,int8_t m=0);
@@ -532,9 +541,12 @@ public:
 	long FNGetConst(char *,bool);
 	int PROCLoops(const char *, const char *, const char *);
 	int FNRegFree();
-	struct VARS *FNCercaVar(const char *, bool);
-	struct VARS *FNCercaVar(struct TAGS *,const char *);
+	int8_t CmpDecorated(const char *,const char *);
+	struct VARS *FNCercaVar(const char *, bool,struct TAGS **base=NULL);
+	struct VARS *FNCercaVar(struct TAGS *,const char *,struct TAGS **base=NULL);
 	struct TAGS *FNCercaAggr(const char *, bool);
+	struct VARS *FNCercaFunz(struct TAGS *,const char *,const char *,struct TAGS **base=NULL);
+	struct VARS *FNCercaCtor(struct TAGS *,const char *,bool is_ctor,struct TAGS **base=NULL);
 	bool FNHasVar(struct TAGS *);			// ossia "se è definita"
 	struct VARS *PROCAllocVar(const char *name, O_TYPE type, enum VAR_CLASSES, uint8_t modif, O_SIZE size, struct TAGS *, O_DIM dim);
 	struct VARS *PROCAllocFunzProto(const char *name, O_TYPE type, O_SIZE size);
@@ -543,9 +555,9 @@ public:
   struct ENUMS *FNCercaEnum(const char *,const char *,bool);
 	int PROCCast(O_TYPE, O_SIZE, O_TYPE*, O_SIZE*, int8_t);
 	int PROCReadD0(char *outbuf,struct VARS *, O_TYPE type, O_SIZE size, int16_t cond, int ofs, bool asPtr);
-	int PROCStoreD0(char *outbuf,struct VARS *, int8_t VQ, struct VARS *, union STR_LONG *, uint16_t ofs);
+	int PROCStoreD0(char *outbuf,const char *op,struct VARS *, int8_t VQ, struct VARS *, union STR_LONG *, uint16_t ofs);
 	int PROCGetAdd(int8_t VQ, struct VARS *, int ofs, bool asPtr);
-	int PROCUsaFun(struct VARS *,bool isMember=FALSE,const char *n=NULL);
+	int PROCUsaFun(char *outbuf,struct VARS *,bool isMember=FALSE,const char *n=NULL);
 	struct CONS *FNAllocCost(const char *, uint8_t, O_TYPE type=0);
 	struct ENUMS *FNAllocEnum(const char *tag, const char *name, uint32_t value, O_SIZE Size);
 	int PROCInit();
@@ -560,6 +572,7 @@ public:
 	int collectParmList(char *);
 	int collectTypeList(char *);
 	char *getDecor(char *,O_TYPE, O_SIZE, O_DIM, struct TAGS *);
+	int subAcquisisciParm(int *ptr32,struct VARS *V,bool is_member,bool doDeclare);
 
 
   int8_t FNRev(char *,int8_t Pty,int16_t *cond,char *,struct OPERAND *);
@@ -584,8 +597,8 @@ public:
 		struct OP_DEF *,uint8_t isPtr);
 
 	void subObj(COutputFile *,const char*);
-  int PROCError(int, const char *s=NULL);
-  int PROCWarn(int, const char *s=NULL);
+	int PROCError(int, ...);
+  int PROCWarn(int, ...);
   int PROCV(const char *);
 	int PROCT();
 	int PROCD();
@@ -631,7 +644,7 @@ public:
 	uint32_t FNGetAggr2(struct VARS *, struct VARS *, int *, int *ofs=NULL);
 	struct TAGS *subAllocTag(const char *,int8_t);
 	struct TAGS *FNAllocAggr(int8_t);
-	int StoreVar(char *outbuf,struct VARS *Vvar,int8_t VQ, struct VARS *RVar, union STR_LONG *, uint16_t ofs);
+	int StoreVar(char *outbuf,const char *op,struct VARS *Vvar,int8_t VQ, struct VARS *RVar, union STR_LONG *, uint16_t ofs);
 	int ReadVar(char *outbuf,struct VARS *,O_TYPE type,O_SIZE size,uint8_t/*bool*/ isCond,bool asPtr);
 
 	int PROCUseCost(char *outbuf,int8_t Q, O_TYPE type, O_SIZE size, union STR_LONG *,bool asPtr);
@@ -643,6 +656,7 @@ public:
 	O_SIZE FNGetMemSize(struct VARS *, uint8_t);
 	O_TYPE FNGetPureType(struct VARS *);
 	O_SIZE FNGetArraySize(struct VARS *);
+	O_SIZE FNGetArraySize(O_DIM);
 	uint8_t FNGetArrayDims(struct VARS *);
 
 	static char *OpCond[16];

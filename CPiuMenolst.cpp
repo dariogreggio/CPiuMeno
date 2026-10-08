@@ -3,6 +3,7 @@
 #include "CPiuMenoTrans.h"
 
 #include <stdlib.h>
+#include <stdarg.h>
 #include <conio.h>
 
 
@@ -43,13 +44,13 @@ struct ERRORE CPlusMinus::Errs[]={
   2017,1,"illegal escape sequence",
   2018,1,"unknown character",
   2021,1,"invalid character",
-  2025,1,"enum/struct/union type redefinition:",
-  2026,1,"type redefinition:",
-  2027,1,"use of undefined type",
-  2030,1,"struct/union member redefinition:",
+  2025,1,"enum/struct/union type redefinition: %s",
+  2026,1,"type redefinition: %s",
+  2027,1,"use of undefined type %s",
+  2030,1,"struct/union member redefinition: %s",
   2037,1,"left operand specifies undefined struct/union",
-  2038,1,"not struct/union member of namespace:",   /* anche 2021*/
-  2039,1,"not struct/union member:",
+  2038,1,"not struct/union member of namespace: %s",   /* anche 2021*/
+  2039,1,"not struct/union member: %s",
   2040,1,"different levels of indirection", /*anche 4047*/
   2041,1,"illegal digit for base",
   2043,1,"illegal break",
@@ -63,8 +64,8 @@ struct ERRORE CPlusMinus::Errs[]={
   2051,1,"case expression not constant",
   2052,1,"case expression not integral",
   2053,1,"case expression too large for switch variable",
-  2054,1," expected",
-	2055,1, "expected formal parameter name list",
+  2054,1,"%s expected",
+	2055,1,"expected formal parameter name list",
   2057,1,"expected constant expression",
   2058,1,"divide by zero",
   2059,1,"syntax error",
@@ -76,10 +77,10 @@ struct ERRORE CPlusMinus::Errs[]={
   2071,1,"bad storage class",
   2078,1,"too many initializers",
   2079,1,"uses undefined struct/union",
-  2082,1,"redefinition of formal parameter:",
-  2083,1,"redundant declaration of function:",
-  2084,1,"funtion already has a body:",
-  2086,1,"redefinition:",/*anche 2011?*/
+  2082,1,"redefinition of formal parameter: %s",
+  2083,1,"redundant declaration of function: %s",
+  2084,1,"funtion already has a body: %s",
+  2086,1,"redefinition: %s",/*anche 2011?*/
   2087,1,"missing subscript",
   2093,1,"can't use address of automatic variable as static init",
   2094,1,"label undefined",
@@ -106,16 +107,16 @@ struct ERRORE CPlusMinus::Errs[]={
 #else
   2127,1,"stack allocation exceeds size (128)",
 #endif
-	2129,1,"static function '' declared but not defined",
+	2129,1,"static function '%s' declared but not defined",
   2137,1,"empty character constant",
   2141,3,"value out of range for enum"/*anche 4341*/,
-  2143,1,"syntax error : missing ';' before 'type'",
-  2146,1,"syntax error : missing ';' before identifier 'type'",
+  2143,1,"syntax error : missing ';' before '%s'",
+  2146,1,"syntax error : missing ';' before identifier '%s'",
   2149,1,"named bitfield cannot have zero width",
   2153,1,"hex constant must have at least one digit",
   2156,1,"pragma must be outside function",
   2166,1,"l-value specifies const object",
-  2187,1,"syntax error : 'void' was unexpected",
+  2187,1,"syntax error : '%s' was unexpected",
   2200,1,"warning treated as error",
   2205,1,"can't initialize extern variable",
 	2215,1,"local variable '%s' in naked function '%s' allocated without stack frame",
@@ -123,51 +124,60 @@ struct ERRORE CPlusMinus::Errs[]={
   2222,1,"'->' left operand has struct/union type, use .",/*anche 2232*/
   2223,1,"left operand must point to struct/union type",/*anche 2227*/
   2224,1,"left operand must have struct/union type",/*anche 2228*/
+	2252,1,"pure specifier can only be specified for functions",
   2275,1,"illegal use of this type as an expression",
   2297,1,"operand is illegal (not integer)",
 // anche ,gemini	2301,1,"local variable '%s' in naked function '%s' allocated without stack frame"
-  2352,1,"illegal call of non-static member function",
-  2371,1,"redefinition (different basic types):",/*anche altri*/		// questa per funzioni
+  2352,1,"illegal call of non-static member function %s",
+  2371,1,"redefinition (different basic types): %s",/*anche altri*/		// questa per funzioni, o membri statici
+  2437,1,"'%s': already initialized",
   2438,1,"cannot initialize static data member in constructor initializer list",		// anche 2649
-  2440,1,"cannot convert from 'void' to ",		// e mettere il tipo :)
+  2440,1,"cannot convert from '%s' to %s",		// e mettere il tipo :)
 	2504,1,"base class undefined",
-  2511,1,"overloaded member function not found in ",		// anche 2632
-  2512,1,"costruttore appropriato non disponibile",
+  2511,1,"overloaded member function not found in %s",		// anche 2632
+  2512,1,"%s: costruttore appropriato non disponibile",
 	2523,1,"destructor tag mismatch",
   2524,1,"a destructor cannot have a return type",
   2528,1,"pointer to reference is illegal",
   2533,1,"constructors cannot have a return type",
-  2548,1,"missing default parameter for parameter N",
-	2556,1,"overloaded function differs only by return type from",
+  2535,1,"%s : member function already defined or declared",
+  2541,1,"%s : cannot delete objects that are not pointers",
+  2548,1,"missing default parameter for parameter %u",
+	2556,1,"overloaded function differs only by return type from %s",
 	2561,1,"function must return a value",
 	2562,1,"void function returning a value",
 	2572,1,"redefinition of default argument",
 	2588,1,"qualificatore di classe non valido per una dichiarazione globale",		// anche 2253 dice..
   2599,1,"local records are not supported",
   2601,1,"local functions are not supported",
+	2614,1,"%s : illegal member initialization: '%s' is not a base or member",
+	2639,1,"%s : cannot initialize base class '%s' multiple times",
   2649,1,"cannot initialize static data member in constructor initializer list",		// anche 2438
 	2651,1,"a union cannot be used as a base class",
 	2652,1,"a union cannot inherit from a base class",		// anche 2653 dice
-  2660,1,"function does not take N arguments",
+	2653,1,"'%s' : is not a class or namespace name",
+  2660,1,"function does not take %u arguments",
+	2664,1,"%s : cannot convert parameter 1 in constructor call",
   2665,1,"none of the overloads could convert all the argument types",
+	2668,1,"ambiguous call to overloaded function %s",
   2671,1,"static member functions cannot be virtual",
   2831,1,"a destructor cannot have parameters",
    3001,1,"interrupt function returning a value",
    3002,1,"interrupt function with parms",
-	3861,1,"identifier not found",		// v. 2065
+	3861,1,"identifier not found: %s",		// v. 2065
   4002,1,"ignoring unknown flag",/*Microsoft D4002*/
   4005,1,"macro redefinition",
-  4013,3,"function undefined; assuming extern returning int",
+  4013,3,"function undefined %s; assuming extern returning int",
   4018,3,"signed/unsigned mismatch",
 	4028,3,"redundant declaration of function:",		// anche 2083
-	4033,1,"must return a value",
+	4033,1,"%s must return a value",
   4035,1,"function with no return value",
   4042,1,"bad storage class",
   4047,1,"different levels of indirection",
   4049,1,"indirection to different types",
   4068,1,"#pragma o attributo sconosciuto",
-  4069,1,"ignorato: ",
-  4091,1,"'struct ': ignored on left of 'type' when no variable is declared",
+  4069,1,"ignorato: %s",
+  4091,1,"'struct %s': ignored on left of 'type' when no variable is declared",
   4098,1,"void function returning a value",		// anche 2562 qua
   4099,1,"void type invalid",
   4101,3,"unreferenced local variable",
@@ -177,10 +187,10 @@ struct ERRORE CPlusMinus::Errs[]={
   4133,2,"incompatible types",
 	4172,3,"returning address of local variable or temporary",
 	4244,3,"conversion, truncation, possible loss of data",
-  4305,3,"truncation from ",
+  4305,3,"truncation from %s",
   4309,3,"truncation of constant value",
 	4430,4,"missing type specifier - int assumed",
-  4701,3,"local variable used without initialization",
+  4701,3,"local variable used without initialization %s",
   4705,4,"statement has no effect",
   4710,4,"function not inlined",
 	4715,3,"not all control paths return a value",
@@ -189,37 +199,50 @@ struct ERRORE CPlusMinus::Errs[]={
   };
 
   
-int CPlusMinus::PROCError(int Er, const char *a) {
+int CPlusMinus::PROCError(int Er, ...) {
+  char errBuf[512];
+  char msgBuf[256];
+  char lineBuf[256];
   int i;
-  char myBuf[256],errBuf[256];
 
-  wsprintf(errBuf,"%s: (%d): errore %d",__file__,__line__,Er);
-  i=0;
-  while (Er != Errs[i].t && Errs[i].t)
+  // 1. Cerca il messaggio di base nella tabella degli errori
+  i = 0;
+  while (Errs[i].t != Er && Errs[i].t != 0)
     i++;
-  if(Errs[i].t) {
-  	wsprintf(myBuf,": %s",Errs[i].s);
-		_tcscat(errBuf,myBuf);
- 	  if(a)
- 	    wsprintf(myBuf,": %s",a);
- 	  else  
- 	    wsprintf(myBuf,".");
-		_tcscat(errBuf,myBuf);
-		if(FErr) {
-			FErr->println(errBuf);
-			if(FIn)	// se errore DOPO la compilazione
-				FNGetLine(FIn->GetPosition(),myBuf);			// SISTEMARE posizione...
-			FErr->println(myBuf);
-			}
-	  if(debug) {
-	    PROCV("vartmp.map");
-//	    PROCT();
-	    }
-    }
-	else	{
-	  wsprintf(myBuf,"(%d)",Er);
-    PROCError(1000,myBuf);
-    }
+
+  if(Errs[i].t == 0) {
+    // Codice errore sconosciuto: fallback all'errore 1000
+    char unkBuf[32];
+    wsprintf(unkBuf, "(%d)", Er);
+    return PROCError(1000, unkBuf);
+		}
+
+  // 2. Formatta la parte custom ricevuta nei parametri variabili (...)
+  // wvsprintfA (Win32) oppure vsnprintf gestisce la lista di argomenti variadici
+	va_list args;
+  va_start(args, Er);
+  wvsprintf(msgBuf, Errs[i].s, args); // oppure vsnprintf/vsprintf
+	va_end(args);
+
+  // 3. Compone l'intestazione standard MSVC: file(line): error CXXXX: description: custom
+  wsprintf(errBuf, "%s: (%d): errore %u: %s",
+            __file__, __line__, Er, msgBuf);
+
+  // 4. Stampa su file di log/errori e mostra la riga sorgente
+  if(FErr) {
+    FErr->println(errBuf);
+    
+    if(FIn) {
+      // Estrae la linea di codice dal sorgente per mostrare dove si trova l'errore
+      FNGetLine(FIn->GetPosition(), lineBuf);
+      FErr->println(lineBuf);
+      }
+	  }
+
+  // 5. Gestione del Debugger/Dump dello stato interno
+  if(debug)
+    PROCV("vartmp.map");
+
 /*  if(FPre)
     fclose(FPre);
   if(FObj)
@@ -244,34 +267,42 @@ int CPlusMinus::PROCError(int Er, const char *a) {
 	//3. Il "Soffitto" degli Errori (Error Limit)
 	//4. Bilanciamento delle Parentesi (Brace Matching Tracking)
 
-	if(!panicMode) {
-		numErrors++;
-		if(myOutput) {
-			char *p=(LPSTR)GlobalAlloc(GPTR,256);
-			_tcscpy(p,errBuf);
-			myOutput->PostMessage(WM_ADDTEXT,1,(LPARAM)p);
-			}
-		}
-	else	
-		panicMode=TRUE;
+  if(!panicMode) {
+    numErrors++;
+    
+    // Invio del messaggio alla finestra GUI tramite PostMessage Win32
+    if(myOutput) {
+      char *p = (LPSTR)GlobalAlloc(GPTR, 512);
+      if(p) {
+        _tcscpy(p, errBuf);
+        myOutput->PostMessage(WM_ADDTEXT, 1, (LPARAM)p);
+        }
+      }
+    } 
+	else
+	  panicMode = TRUE;
+
 //	throw; 
   return 0;
   }
 
-int CPlusMinus::PROCWarn(int Er, const char *a) {
+int CPlusMinus::PROCWarn(int Er, ...) {
   int i;
   char myBuf[256],errBuf[256];
 
   if(Warning) {
 		numWarnings++;
 	  i=0;
-    while (Er != Errs[i].t && Errs[i].t)
+    while(Er != Errs[i].t && Errs[i].t)
       i++;
     if(Errs[i].t) {  
 		  if(Warning<0 || Errs[i].l <= Warning) {
-			  wsprintf(errBuf,"%s: (%d): warning %d",__file__,__line__,Er);
-			  wsprintf(myBuf,": %s %s",Errs[i].s,a ? a : ".");
-				_tcscat(errBuf,myBuf);
+				va_list args;
+				va_start(args, Er);
+				wvsprintf(myBuf, Errs[i].s, args); // oppure vsnprintf/vsprintf
+				va_end(args);
+			  wsprintf(errBuf, "%s(%d): warning %u: %s",
+						     __file__, __line__, Er, myBuf);
 				{
 				char *p=(LPSTR)GlobalAlloc(GPTR,256);
 				_tcscpy(p,errBuf);
@@ -427,7 +458,7 @@ int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func, struct VARS *Vro
 				}
 			else if(V->type & VARTYPE_IS_POINTER) 
 				p="pointer";
-			else if(V->type & VARTYPE_IS_REFERENCE) 
+			else if(V->type & VARTYPE_REFERENCE) 
 				p="reference";		// in teoria può essere anche reference a pointer...
 			else {
 				if(V->type & (VARTYPE_CLASS))
@@ -560,7 +591,8 @@ int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func, struct VARS *Vro
     FO->println("\fOggetti aggregati");
     C=StrTag;
     while(C) {
-			FO->printf("%32s %s\n",C->label,C->member ? C->member->label : "");
+			FO->printf("%32s %16s %32s\n",C->label,C->type ? (C->type==2 ? "class" : "struct") : "union",
+				C->member ? C->member->label : "");
       C=C->next;
       } 
 		}
