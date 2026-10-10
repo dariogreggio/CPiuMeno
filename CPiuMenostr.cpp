@@ -96,6 +96,7 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
 		    f=FO5;
         break;
       case LINE_TYPE_LABEL:
+      case LINE_TYPE_CONST_DEF:
 		    f=FO3;
         break;
       case LINE_TYPE_DATA_DEF:
@@ -123,6 +124,15 @@ void CPlusMinus::PROCOut(uint8_t type, const char *A, const char *B, const char 
       case LINE_TYPE_LABEL:
 		    f->printf("//\t");
 		    subObj(f,A);
+        break;
+      case LINE_TYPE_CONST_DEF:
+        f->printf("%s\t",A);
+				if(B)
+					subObj(f,B);
+				if(C) {
+					f->put('\t');
+					subObj(f,C);
+					}
         break;
       case LINE_TYPE_DATA_DEF:
         f->printf("%s\t",A);

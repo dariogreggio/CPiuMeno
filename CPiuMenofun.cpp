@@ -10,7 +10,7 @@
 #include <ctype.h>
 
 
-int CPlusMinus::PROCUsaFun(char *outbuf,struct VARS *V,bool isMember,const char *n) {    //
+int CPlusMinus::PROCUsaFun(char *outbuf,struct VARS *V,uint8_t isMember,const char *n) {    // isMember = 0x80 se membro | 4bit PTR
   int I,T=0;
 	int16_t i,j;
   int totParm,prParm=0;
@@ -72,7 +72,7 @@ int CPlusMinus::PROCUsaFun(char *outbuf,struct VARS *V,bool isMember,const char 
 	*outbuf=0;
 	if(isMember) {
 		if(1)		// SOLO SE subclass
-			wsprintf(MyBuf,"(%s*)&%s,",V->isInTag->label,n);
+			wsprintf(MyBuf,"(struct %s*)%s%s,",V->isInTag->label,isMember & VARTYPE_IS_POINTER ? "" : "&",n);
 		else
 			wsprintf(MyBuf,"&%s,",n);
 		}
@@ -116,7 +116,7 @@ int CPlusMinus::PROCUsaFun(char *outbuf,struct VARS *V,bool isMember,const char 
 		  j=FNGetMemSize(R.type,R.size,0/*dim*/,1);
 
 			if(parmType & VARTYPE_IS_POINTER && !(R.type & VARTYPE_IS_POINTER)) {	// 
-				PROCError(2116,R.var ? R.var->name : "");
+				PROCError(2116,R.var ? R.var->name : "",prParm);
 				}
 			else if(parmSize /*void* assorbe tutto!*/ && (parmType ^ R.type) & (VARTYPE_STRUCT | VARTYPE_UNION)
 				|| ((parmType ^ R.type) & VARTYPE_IS_POINTER)) {	// e poi tag, dim array...
@@ -175,8 +175,7 @@ L19440:
   if(totParm != -1) {
 rifo_defparm:
 		if(prParm>totParm) {
-			wsprintf(MyBuf,"%s, #%u",V->name,prParm);
-			PROCError(2116,MyBuf);
+			PROCError(2116,V->name,prParm);
 			}
 		else if(prParm<totParm) {
 
@@ -195,9 +194,7 @@ rifo_defparm:
 				goto rifo_defparm;
 				}
 			else {
-
-				wsprintf(MyBuf,"%s, #%u",V->name,prParm);
-				PROCError(2116,MyBuf);
+				PROCError(2116,V->name,prParm);
 				}
 			}
 

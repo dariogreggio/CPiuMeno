@@ -58,6 +58,7 @@ enum LINE_TYPE {
 	LINE_TYPE_NULLA=0,
 	LINE_TYPE_LABEL,
 	LINE_TYPE_DICHIARAZIONE,
+  LINE_TYPE_CONST_DEF,
 	LINE_TYPE_DATA,		// per BSS
 	LINE_TYPE_DATA_DEF,		// altre
 	LINE_TYPE_DATA_DEF_CONT,
@@ -224,6 +225,7 @@ struct VARS {
 			int16_t flag;
 			};
 		} parm;
+	char *decor;
   struct TAGS *isInTag;         // se <>0, la var. è un membro della struct tag
   struct TAGS *hasTag;      // questo indica il tag di questa struct
   struct TAGS *hasBase;      // se è presente in una class base (viene assegnato da CercaVar ogni volta
@@ -463,10 +465,11 @@ protected:
 	COutputFile *FO1,*FO2,*FO3,*FO4,*FO5;
 	COutputFile *FObj,*FCod;
 	COutputFile *FLst,*FErr;
-	static struct ERRORE Errs[];
-	static char *dtor,*ctor;
+	static const struct ERRORE Errs[];
+	static char *dtor,*ctor,*vptr,*the_this;
 	static char *to_mangle;
 	static char *ptr_to_base,*ptr_to_base2;
+	static char *struct_type;
 	static char *main_name;
 	static char *malloc_name,*free_name;
 	int8_t Warning;
@@ -548,6 +551,7 @@ public:
 	struct VARS *FNCercaFunz(struct TAGS *,const char *,const char *,struct TAGS **base=NULL);
 	struct VARS *FNCercaCtor(struct TAGS *,const char *,bool is_ctor,struct TAGS **base=NULL);
 	bool FNHasVar(struct TAGS *);			// ossia "se è definita"
+	bool FNHasVirtual(struct TAGS *);			// ossia "se ha almeno una funzione virtual"
 	struct VARS *PROCAllocVar(const char *name, O_TYPE type, enum VAR_CLASSES, uint8_t modif, O_SIZE size, struct TAGS *, O_DIM dim);
 	struct VARS *PROCAllocFunzProto(const char *name, O_TYPE type, O_SIZE size);
 	struct VARS *PROCAllocGoto(const char *label);
@@ -557,7 +561,7 @@ public:
 	int PROCReadD0(char *outbuf,struct VARS *, O_TYPE type, O_SIZE size, int16_t cond, int ofs, bool asPtr);
 	int PROCStoreD0(char *outbuf,const char *op,struct VARS *, int8_t VQ, struct VARS *, union STR_LONG *, uint16_t ofs);
 	int PROCGetAdd(int8_t VQ, struct VARS *, int ofs, bool asPtr);
-	int PROCUsaFun(char *outbuf,struct VARS *,bool isMember=FALSE,const char *n=NULL);
+	int PROCUsaFun(char *outbuf,struct VARS *,uint8_t isMember=0,const char *n=NULL);
 	struct CONS *FNAllocCost(const char *, uint8_t, O_TYPE type=0);
 	struct ENUMS *FNAllocEnum(const char *tag, const char *name, uint32_t value, O_SIZE Size);
 	int PROCInit();
@@ -650,6 +654,7 @@ public:
 	int PROCUseCost(char *outbuf,int8_t Q, O_TYPE type, O_SIZE size, union STR_LONG *,bool asPtr);
 	int FNIsOp(const char *, int);
 	int FNIsClass(const char *);
+	char *FNGetOperatorFunc(const char *n,char *s);
 	O_SIZE FNGetSize(uint32_t);
 	O_SIZE FNGetSize(uint64_t);
 	O_SIZE FNGetMemSize(O_TYPE type, O_SIZE size, O_DIM dim, uint8_t m);

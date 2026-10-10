@@ -7,10 +7,10 @@
 #include <conio.h>
 
 
-struct ERRORE CPlusMinus::Errs[]={
+const struct ERRORE CPlusMinus::Errs[]={
   1000,1,"unknown internal error - contact Cyberdyne",
-  1001,1,"internal error:",
-  1002,1,"unsupported:",
+  1001,1,"internal error: %s",
+  1002,1,"unsupported: %s",
   1003,1,"error count exceeds 100; stopping compilation",
   1004,1,"unexpected EOF",
   1016,1,"#if[n]def expected an identifier",
@@ -20,13 +20,14 @@ struct ERRORE CPlusMinus::Errs[]={
   1020,1,"unexpected #endif",
   1021,1,"bad preprocessor command",
   1022,1,"expected #endif",
-  1023,1,"cannot open source file",
-  1024,1,"cannot open include file",
+  1023,1,"cannot open source file %s",
+  1024,1,"cannot open include file %s",
   1035,1,"expression too complex, please simplify",
-  1037,1,"cannot open object file",
+  1037,1,"cannot open object file %s",
   1065,1,"out of tags space",
-  1068,1,"cannot open file",
-  1069,1,"write error on file",
+  1068,1,"cannot open file %s",
+  1069,1,"write error on file %s",
+  1092,1,"new data types not supported by incremental build - full build required",
 #if MC68000 || ARCHI
   1126,1,"automatic allocation exceeds size (32768)" ,
 #elif GD24032
@@ -34,11 +35,11 @@ struct ERRORE CPlusMinus::Errs[]={
 #else
   1126,1,"automatic allocation exceeds size (128)" /*anche 2127*/,
 #endif
-  2000,1,"partially unimplemented:",
+  2000,1,"partially unimplemented: %s",
   2001,1,"newline in constant",
   2007,1,"#define syntax",
   2010,1,"invalid formal list",
-  2011,1,"redefinition:",
+  2011,1,"redefinition: %s",
   2012,1,"bad char following include",
   2015,1,"too many chars in costant",
   2017,1,"illegal escape sequence",
@@ -59,25 +60,25 @@ struct ERRORE CPlusMinus::Errs[]={
   2046,1,"illegal case",
   2047,1,"illegal default",
   2048,1,"more than one default",
-  2049,1,"case value already used:",
+  2049,1,"case value already used: %u",
   2050,1,"non-integral switch expression",
   2051,1,"case expression not constant",
   2052,1,"case expression not integral",
-  2053,1,"case expression too large for switch variable",
-  2054,1,"%s expected",
+  2053,1,"case expression too large for switch variable %u",
+  2054,1,"expected %s",
 	2055,1,"expected formal parameter name list",
   2057,1,"expected constant expression",
   2058,1,"divide by zero",
-  2059,1,"syntax error",
-  2062,1,"unexpected",/*anche 2132*/
-  2064,1,"not a function:",/*2063 anche ok*/
-  2065,1,"undefined",			//undeclared identifier, v. anche 3861
+  2059,1,"syntax error: %s",
+  2062,1,"%s unexpected",/*anche 2132*/
+  2064,1,"not a function: %s",/*2063 anche ok*/
+  2065,1,"undefined: %s",			//undeclared identifier, v. anche 3861
   2068,1,"illegal cast",
   2070,1,"illegal sizeof operand",
   2071,1,"bad storage class",
   2078,1,"too many initializers",
-  2079,1,"uses undefined struct/union",
-  2082,1,"redefinition of formal parameter: %s",
+  2079,1,"uses undefined struct/union %s",
+  2082,1,"%s: redefinition of formal parameter %u",
   2083,1,"redundant declaration of function: %s",
   2084,1,"funtion already has a body: %s",
   2086,1,"redefinition: %s",/*anche 2011?*/
@@ -98,7 +99,7 @@ struct ERRORE CPlusMinus::Errs[]={
   2111,1,"pointer + non-integral value",
   2112,1,"illegal use of pointer",
   2115,1,"incompatible types",
-  2116,1,"function parameter list differed",
+  2116,1,"function parameter list differed: %s, %u",
   2121,1,"bad right operand",
 #if MC68000 || ARCHI
   2127,1,"stack allocation exceeds size (32768)", /*anche 1126*/
@@ -110,8 +111,8 @@ struct ERRORE CPlusMinus::Errs[]={
 	2129,1,"static function '%s' declared but not defined",
   2137,1,"empty character constant",
   2141,3,"value out of range for enum"/*anche 4341*/,
-  2143,1,"syntax error : missing ';' before '%s'",
-  2146,1,"syntax error : missing ';' before identifier '%s'",
+  2143,1,"syntax error : missing '%s' before '%s'",
+  2146,1,"syntax error : missing '%s' before identifier '%s'",
   2149,1,"named bitfield cannot have zero width",
   2153,1,"hex constant must have at least one digit",
   2156,1,"pragma must be outside function",
@@ -136,6 +137,7 @@ struct ERRORE CPlusMinus::Errs[]={
 	2504,1,"base class undefined",
   2511,1,"overloaded member function not found in %s",		// anche 2632
   2512,1,"%s: costruttore appropriato non disponibile",
+	2513,1,"'%s' : no variable declared before '%s'",		// 'unsigned int' : no variable declared before '='
 	2523,1,"destructor tag mismatch",
   2524,1,"a destructor cannot have a return type",
   2528,1,"pointer to reference is illegal",
@@ -146,8 +148,10 @@ struct ERRORE CPlusMinus::Errs[]={
 	2556,1,"overloaded function differs only by return type from %s",
 	2561,1,"function must return a value",
 	2562,1,"void function returning a value",
-	2572,1,"redefinition of default argument",
+	2572,1,"redefinition of default argument %s",
+	2574,1,"'%s' : cannot be declared static",
 	2588,1,"qualificatore di classe non valido per una dichiarazione globale",		// anche 2253 dice..
+	2597,1,"illegal reference to non-static member '%s'",
   2599,1,"local records are not supported",
   2601,1,"local functions are not supported",
 	2614,1,"%s : illegal member initialization: '%s' is not a base or member",
@@ -156,26 +160,29 @@ struct ERRORE CPlusMinus::Errs[]={
 	2651,1,"a union cannot be used as a base class",
 	2652,1,"a union cannot inherit from a base class",		// anche 2653 dice
 	2653,1,"'%s' : is not a class or namespace name",
-  2660,1,"function does not take %u arguments",
+  2660,1,"function '%s' does not take %u arguments",
 	2664,1,"%s : cannot convert parameter 1 in constructor call",
   2665,1,"none of the overloads could convert all the argument types",
 	2668,1,"ambiguous call to overloaded function %s",
   2671,1,"static member functions cannot be virtual",
+	2678,1,"operatore non trovato %s",
+  2753,1,"syntax: %s",		// sintassi dello scope, dice
   2831,1,"a destructor cannot have parameters",
+  2833,1,"'%s' is not a recognized operator or type",
    3001,1,"interrupt function returning a value",
    3002,1,"interrupt function with parms",
 	3861,1,"identifier not found: %s",		// v. 2065
-  4002,1,"ignoring unknown flag",/*Microsoft D4002*/
-  4005,1,"macro redefinition",
+  4002,1,"ignoring unknown flag %s",/*Microsoft D4002*/
+  4005,1,"macro redefinition: %s",
   4013,3,"function undefined %s; assuming extern returning int",
   4018,3,"signed/unsigned mismatch",
-	4028,3,"redundant declaration of function:",		// anche 2083
+	4028,3,"redundant declaration of function: %s",		// anche 2083
 	4033,1,"%s must return a value",
-  4035,1,"function with no return value",
-  4042,1,"bad storage class",
+  4035,1,"%s: function with no return value",
+  4042,1,"bad storage class: %s",
   4047,1,"different levels of indirection",
   4049,1,"indirection to different types",
-  4068,1,"#pragma o attributo sconosciuto",
+  4068,1,"#pragma o attributo sconosciuto %s",
   4069,1,"ignorato: %s",
   4091,1,"'struct %s': ignored on left of 'type' when no variable is declared",
   4098,1,"void function returning a value",		// anche 2562 qua
@@ -186,9 +193,9 @@ struct ERRORE CPlusMinus::Errs[]={
   4131,4,"old-style declaration",
   4133,2,"incompatible types",
 	4172,3,"returning address of local variable or temporary",
-	4244,3,"conversion, truncation, possible loss of data",
+	4244,3,"'initializing' / 'conversion' : conversion from '%s' to '%s', possible loss of data",
   4305,3,"truncation from %s",
-  4309,3,"truncation of constant value",
+  4309,3,"truncation of constant value %u",
 	4430,4,"missing type specifier - int assumed",
   4701,3,"local variable used without initialization %s",
   4705,4,"statement has no effect",
@@ -206,8 +213,8 @@ int CPlusMinus::PROCError(int Er, ...) {
   int i;
 
   // 1. Cerca il messaggio di base nella tabella degli errori
-  i = 0;
-  while (Errs[i].t != Er && Errs[i].t != 0)
+  i=0;
+  while(Errs[i].t != Er && Errs[i].t != 0)
     i++;
 
   if(Errs[i].t == 0) {
@@ -301,7 +308,7 @@ int CPlusMinus::PROCWarn(int Er, ...) {
 				va_start(args, Er);
 				wvsprintf(myBuf, Errs[i].s, args); // oppure vsnprintf/vsprintf
 				va_end(args);
-			  wsprintf(errBuf, "%s(%d): warning %u: %s",
+			  wsprintf(errBuf, "%s: (%u): warning %u: %s",
 						     __file__, __line__, Er, myBuf);
 				{
 				char *p=(LPSTR)GlobalAlloc(GPTR,256);
@@ -311,11 +318,13 @@ int CPlusMinus::PROCWarn(int Er, ...) {
 				if(FErr)
 					FErr->println(errBuf);
 		    if(Warning<0)
-		      PROCError(2200,NULL);
+		      PROCError(2200,"warning");
 			  }
+//			else
+	// qua?			numWarningsSuppr++;
 			}
 		else	
-      PROCError(1000,NULL);
+      PROCError(1000,"warning sconosciuto");
     
     }
   return 0;
@@ -398,10 +407,23 @@ int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func, struct VARS *Vro
 		}
   V=Var;
   while(V) {
-    if(V->func.func==func) {
+	  struct VARS *v;
+
+		/*if(func) {
+			v=func->members;		// usare poi!!
+			while(v) {
+				FO->printf("local nuove %32s\n",v->name);
+
+				v=v->next;
+				}
+			}*/
+
+    
+		if(V->func.func==func) {
 			if(!(T % 60)) {
 				FO->printf("\n%32s%10s%16s%10s%12s%8s%12s\n\n","Nome","Classe","Tipo","Dim.","Offset/Registro","Vis.","Tag");
 				}
+
 			FO->printf("%32s",V->name);
 
 	//    i=26-strlen(Var[T].name)/2;
@@ -419,7 +441,7 @@ int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func, struct VARS *Vro
 					p="static";
 					break;
 				case CLASSE_AUTO:
-					i=0;
+					i=-1;		// serve qua??
 					if(i<0)
 						p="auto";
 					else 

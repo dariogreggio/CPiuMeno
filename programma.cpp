@@ -5,7 +5,7 @@ int pippo(int a,char c) { return 1; }
 extern "C" {
 int minchia(int a);
 }
-int ciao(int a,char b=7,int c=9);
+int ciao(int a,int b=7,int c=9);
 
 float ff;
 class Shape;		// 
@@ -133,15 +133,15 @@ int a,b,c;
 CULO w;
 
 //SHAPE glShape;	// (NON dà errore alloca SHAPE!
-class Shape glShape(1,1);
+//class Shape glShape(1,1);
 
 int ciao(int a,int b,int c=9) {
 	char *p=new char[32];
 	p=new Shape;
 	p=new char;
-	p=new class Shape;
+	p=new class Shape;	// dà warning per il :
 	p=new class Shape(10,7);
-	p=new struct CULO;
+	p=new struct CULO;		// dà warning per il :
 	while(a--)
 		b++;
 	delete p;
@@ -167,6 +167,8 @@ y=pt.x;
 pt.print();
 pt.print(1);
 Shape::muori();
+//Point::print();
+//sh::muori();
 pt.muori();
     // Chiamata a metodo su oggetto
    pt.move(5, -2);

@@ -84,7 +84,7 @@ int CPlusMinus::FNEvalECast(char *outbuf,char *C, O_TYPE *T, O_SIZE *S) {
 	    PROCReadD0(outbuf,V.var,*T,*S,0,0,FALSE);
 			}
 		else if(V.Q & VALUE_IS_COSTANTE) {
-	    PROCUseCost(NULL,V.Q,*T,*S,(union STR_LONG *)C,FALSE);
+//	    PROCUseCost(outbuf,V.Q,*T,*S,(union STR_LONG *)C,FALSE);
 			}
 	  else if(V.Q==VALUE_IS_EXPR || V.Q==VALUE_IS_EXPR_FUNC)
 	    PROCCast(*T,*S,&V.type,&V.size,-1);
@@ -99,7 +99,7 @@ int CPlusMinus::FNEvalECast(char *outbuf,char *C, O_TYPE *T, O_SIZE *S) {
 	    PROCReadD0(outbuf,V.var,V.type,V.size,0,0,FALSE);
 			}
 		else if(V.Q & VALUE_IS_COSTANTE) {
-	    PROCUseCost(NULL,V.Q,V.type,V.size,(union STR_LONG *)C,FALSE);
+//	    PROCUseCost(outbuf,V.Q,V.type,V.size,(union STR_LONG *)C,FALSE);
 			}
 	  else if(V.Q==VALUE_IS_PTR)
 			;
@@ -305,7 +305,7 @@ int8_t CPlusMinus::FNRev(char *outbuf,int8_t Pty,int16_t *cond,char *Clabel,stru
                 case '(':
                   if(Co>0) {
                     if(V->type & VARTYPE_FUNC) {
-                      PROCUsaFun(outbuf,V->var);		//?? qua 2025, Pty solo se operazione binary
+                      PROCUsaFun(outbuf,V->var,0);		//?? qua 2025, Pty solo se operazione binary
 											wsprintf(T1S,"%s(%s)",V->var->name,outbuf);
 											_tcscpy(outbuf,T1S);
 // no, mi serve in ev. espressioni		PROCOper(LINE_TYPE_CALL,V->var,outbuf,NULL,LINE_IS_NORMAL);
@@ -315,7 +315,7 @@ int8_t CPlusMinus::FNRev(char *outbuf,int8_t Pty,int16_t *cond,char *Clabel,stru
                       V->Q=VALUE_IS_EXPR_FUNC;
                       }
                     else
-                      PROCError(2064);
+                      PROCError(2064,V->var ? V->var->name : "");
                     }
                   else {
                     if(FNIsType(FNLA(MyBuf)) != VARTYPE_NOTYPE) {     // cast
@@ -762,8 +762,12 @@ read_array_add_cmq:
 									i=0;
 rifo_struct:
 									T=*TS=='.';		// 1 se membro, 0 se puntatore  AMPLIARE QUA
-									if(!V->tag)
-										PROCError((*TS=='.') ? 2224 : 2223);
+									if(!V->tag) {
+										if(*TS==':')		// questo quando si chiama membro statico da var (e non da classe
+											PROCError(2753,TS);
+										else
+											PROCError((*TS=='.') ? 2224 : 2223);
+										}
 									FNLO(T1S);
 									if(*FNLA(MyBuf) == '(') {
 										long tt=FIn->GetPosition();
@@ -793,7 +797,7 @@ rifo_inherit:
 													PROCOper(LINE_TYPE_COMMENTO | LINE_TYPE_ISTRUZIONE,V->tag->label,NULL,NULL,"chiamo padre",LINE_IS_NORMAL);
 													goto rifo_inherit;
 													}
-												PROCError(2660,T1S);
+												PROCError(2660,T1S,0);		// finire e migliorare
 												goto no_member_struct;
 												}
 											}
@@ -803,10 +807,34 @@ rifo_inherit:
 											}
 										PROCCheck('(');
 										if(R.var->type & VARTYPE_FUNC) {
+											if(*TS=='.') {
+												if(V->type & VARTYPE_IS_POINTER)
+													PROCError(2221);
+												}
+											else if(*TS==':') {				// non passa di qua, viene fatto da fuori, "::"
+												if(R.var->classe != CLASSE_MEMBER_STATIC)
+													PROCError(2352,TS);
+												}
+											else {
+												if(!(V->type & VARTYPE_IS_POINTER))
+													PROCError(2222);
+												}
 
 //									_tcscat(outbuf,R.var->name);
-											PROCUsaFun(outbuf,R.var,R.var->classe == CLASSE_MEMBER_STATIC ? FALSE : TRUE,V->var->name);
-											wsprintf(T1S,"%s(%s)",R.var->name,outbuf);
+											PROCUsaFun(outbuf,R.var,(R.var->classe == CLASSE_MEMBER_STATIC ? 0 : 0x80) | (V->type & VARTYPE_IS_POINTER),V->var->name);
+											if(R.var->classe != CLASSE_MEMBER_VIRTUAL)
+												wsprintf(T1S,"%s(%s)",R.var->name,outbuf);
+											else {
+												_tcscpy(MyBuf,T1S);
+												_tcscat(MyBuf,to_mangle);
+												_tcscat(MyBuf,MyBuf1);
+												if(V->tag->parent)
+													wsprintf(T1S,"((const struct %s_VTable*)%s%s%s%s)->%s(%s)",V->tag->label,V->var->name,TS,ptr_to_base,		// serve cast da __base a tipo che contiene i vptr figli
+														vptr,MyBuf,outbuf);		// tolgo il nome della classe... meglio qua
+												else
+													wsprintf(T1S,"%s%s%s->%s(%s)",V->var->name,TS,
+														vptr,MyBuf,outbuf);		// tolgo il nome della classe... meglio qua
+												}
 											_tcscpy(outbuf,T1S);
 // no, mi serve in ev. espressioni		PROCOper(LINE_TYPE_CALL,R.var,outbuf,NULL,LINE_IS_NORMAL);
 //									*outbuf=0;
@@ -1571,23 +1599,40 @@ myURcost:
                 switch(OP) {
                   case 3:
 //				            *cond=0;
-										if(Optimize & OPTIMIZE_CONST && *TS!='%' && R.Q==VALUE_IS_COSTANTE && (i=FNIsPower2(R.cost->l))) {			// ottimizzo potenze di 2!
-											R.cost->l=i;
-	//										PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
+										if(!(R.Q & VALUE_IS_COSTANTE)) {
+											if(R.Q == VALUE_IS_VARIABILE)
+												PROCCast(V->type,V->size,&R.type,&R.size,
+													-1);		// cast implicito tra operandi!in effetti gemini dice di castare al tipo + grande...
+											else
+												PROCCast(V->type,V->size,&R.type,&R.size,-1);		// cast implicito tra operandi!  in effetti gemini dice di castare al tipo + grande...
 											}
-										else if(Optimize & OPTIMIZE_CONST && *TS=='%' && R.Q==VALUE_IS_COSTANTE && (i=FNIsPower2(R.cost->l))) {			// ottimizzo potenze di 2!
-											R.cost->l = R.cost->l-1;
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
-											}
-										else {
-											if(!(R.Q & VALUE_IS_COSTANTE)) {
-												if(R.Q == VALUE_IS_VARIABILE)
-													PROCCast(V->type,V->size,&R.type,&R.size,
-														-1);		// cast implicito tra operandi!in effetti gemini dice di castare al tipo + grande...
+										if(V->var->type & VARTYPE_CLASS) {		// operator overload
+											struct TAGS *inBase;
+											struct VARS *v;
+											_tcscpy(B1S,V->var->hasTag->label);
+											_tcscat(B1S,"_");
+											_tcscat(B1S,FNGetOperatorFunc(TS,AS));
+											_tcscat(B1S,to_mangle);
+											getDecor(MyBuf1,R.type,R.size,R.dim,R.tag);
+											_tcscat(B1S,MyBuf1);
+											if(v=FNCercaVar(V->tag,B1S,&inBase)) {
+												if(R.Q == VALUE_IS_COSTANTE)
+													wsprintf(MyBuf1,"&%s,%u",V->var->name,R.cost->l);	// 
 												else
-													PROCCast(V->type,V->size,&R.type,&R.size,-1);		// cast implicito tra operandi!  in effetti gemini dice di castare al tipo + grande...
+													wsprintf(MyBuf1,"&%s,&%s",V->var->name,R.var->name);	// finire costanti ecc
+												//PROCOper(LINE_TYPE_CALL,B1S,MyBuf1,NULL,"chiamo operator",LINE_IS_NORMAL);
+												wsprintf(outbuf,"%s(%s)",B1S,MyBuf1);
+												*MyBuf=*TS=0;
+												v->type |= VARTYPE_FUNC_USED;
+												V->type=v->type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY);
+												V->size=v->size;
+												V->tag=v->hasTag;
+												V->Q=VALUE_IS_EXPR;
+												memcpy(V->dim,v->dim,sizeof(O_DIM));
+												break;
 												}
-//											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
+
 											}
                     break;
                   case 4:
@@ -1600,6 +1645,33 @@ myURcost:
 													PROCCast(V->type,V->size,&R.type,&R.size,-1);		// cast implicito tra operandi!  in effetti gemini dice di castare al tipo + grande...
 											}
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
+										if(V->var->type & VARTYPE_CLASS) {		// operator overload
+											struct TAGS *inBase;
+											struct VARS *v;
+											_tcscpy(B1S,V->var->hasTag->label);
+											_tcscat(B1S,"_");
+											_tcscat(B1S,FNGetOperatorFunc(TS,AS));
+											_tcscat(B1S,to_mangle);
+											getDecor(MyBuf1,R.type,R.size,R.dim,R.tag);
+											_tcscat(B1S,MyBuf1);
+											if(v=FNCercaVar(V->tag,B1S,&inBase)) {
+												if(R.Q == VALUE_IS_COSTANTE)
+													wsprintf(MyBuf1,"&%s,%u",V->var->name,R.cost->l);	// 
+												else
+													wsprintf(MyBuf1,"&%s,&%s",V->var->name,R.var->name);	// finire costanti ecc
+												//PROCOper(LINE_TYPE_CALL,B1S,MyBuf1,NULL,"chiamo operator",LINE_IS_NORMAL);
+												wsprintf(outbuf,"%s(%s)",B1S,MyBuf1);
+												*MyBuf=*TS=0;
+												v->type |= VARTYPE_FUNC_USED;
+												V->type=v->type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY);
+												V->size=v->size;
+												V->tag=v->hasTag;
+												V->Q=VALUE_IS_EXPR;
+												memcpy(V->dim,v->dim,sizeof(O_DIM));
+												break;
+												}
+
+											}
 			              break;
 		              case 5:
 //				            *cond=0;
@@ -1647,7 +1719,7 @@ myURcost:
                 }
 
 								_tcscat(MyBuf,outbuf);
-								if(V->var)
+								if(V->Q==VALUE_IS_VARIABILE && V->var)
 									_tcscpy(outbuf,V->var->name);
 								else
 									*outbuf=0;
@@ -2078,8 +2150,13 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 				              PROCError(2115);
 				            if(V->Q==VALUE_IS_VARIABILE) {
 				              if(!(V->var->type & VARTYPE_IS_POINTER) && 
-												(V->var->type & (VARTYPE_STRUCT | VARTYPE_UNION | VARTYPE_CLASS | VARTYPE_ARRAY | VARTYPE_FUNC /*0x1d00*/))) 
-  				              PROCError(2106);   // dovrebbe bloccare i non lvalue a sinistra
+												(V->var->type & (VARTYPE_STRUCT | VARTYPE_UNION | VARTYPE_CLASS | VARTYPE_ARRAY | VARTYPE_FUNC /*0x1d00*/))) {
+												if(V->var->type & VARTYPE_CLASS)
+  												PROCWarn(2106);		// poi TOGLIERE se overload!
+												else
+  												PROCError(2106);   // dovrebbe bloccare i non lvalue a sinistra
+												}
+
 											else {
   				              ReadVar(outbuf,V->var,VARTYPE_PLAIN_INT,0,0,FALSE);
 												}
@@ -2102,7 +2179,7 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 				            else if(V->Q==VALUE_IS_VARIABILE) {
 				              if(!(V->var->type & VARTYPE_IS_POINTER) && 
 												(V->var->type & (VARTYPE_STRUCT | VARTYPE_UNION | VARTYPE_CLASS | VARTYPE_ARRAY | VARTYPE_FUNC /*0x1d00*/))) 
-  				              PROCError(2106);
+  				              PROCWarn(2106);		// poi TOGLIERE se overload!
 											else {
 												switch(T) {
 													case 0:				// ho già letto var
@@ -2128,16 +2205,16 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 
 												StoreVar(outbuf,TS,V->var,T,R.var,R.cost,R.var /*&& R.var->isInTag*/ ? R.var->parm.ofs : 0);		// 
 												if(!_tcscmp(R.var->name,malloc_name) && R.var->hasTag && R.var->hasTag->type==2) {
-													if(R.var->parm.ptr) {
-														p1=_tcschr(R.var->parm.ptr,'(');		// v. di là, è il marker per mangling
+													if(R.var->decor) {
+														p1=_tcschr(R.var->decor,'(');		// v. di là, è il marker per mangling
 														if(p1) {
 															*p1++=0;
-															wsprintf(TS,"%s%s__%s",R.var->hasTag->label,ctor,R.var->parm.ptr);
+															wsprintf(TS,"%s%s__%s",R.var->hasTag->label,ctor,R.var->decor);
 															wsprintf(MyBuf,"%s,%s",V->var->name,p1);
 															}
 														else {
 															wsprintf(TS,"%s%s__",R.var->hasTag->label,ctor);
-															wsprintf(MyBuf,"%s,%s",V->var->name,R.var->parm.ptr);
+															wsprintf(MyBuf,"%s,%s",V->var->name,R.var->decor);
 															}
 														}
 													else {
@@ -2146,9 +2223,9 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 														}
 													PROCOper(LINE_TYPE_CALL,TS,MyBuf,NULL,NULL,LINE_IS_NORMAL);
 													R.var->hasTag=NULL;	// usa e getta direi!
-													if(R.var->parm.ptr)
-														GlobalFree(R.var->parm.ptr);
-													R.var->parm.ptr=NULL;
+													if(R.var->decor)
+														GlobalFree(R.var->decor);
+													R.var->decor=NULL;
 													}
 												}
 
@@ -2286,7 +2363,7 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 //										PROCCast(V->type,V->size,R.type,R.size,
 //											R.var->classe==CLASSE_REGISTER ? MAKEPTRREG(R.var->label): -1);		// cast implicito tra operandi!
 									if(FNGetMemSize(V->type,V->size,NULL/*dim*/,1) < FNGetMemSize(R.type,R.size,NULL/*dim*/,1))
-										PROCWarn(4305);		// finire, completare
+										PROCWarn(4305,R.size);		// finire, completare
 									// 4047 è in storevar/stored0
 			            switch(V->Q) {
 										case VALUE_IS_VARIABILE:
@@ -2324,6 +2401,23 @@ my_add:
 //  						            }  
 												  break;
 												}
+
+											if(V->var->type & VARTYPE_CLASS) {		// operator overload AUTOASSIGN
+												struct TAGS *inBase;
+												struct VARS *v;
+												_tcscpy(MyBuf,V->var->hasTag->label);
+												_tcscat(MyBuf,"_");
+												_tcscat(MyBuf,FNGetOperatorFunc(TS,TS));
+												_tcscat(MyBuf,to_mangle);
+												getDecor(MyBuf1,R.type,R.size,R.dim,R.tag);
+												_tcscat(MyBuf,MyBuf1);
+												if(v=FNCercaVar(V->tag,MyBuf,&inBase)) {		// 
+													PROCOper(LINE_TYPE_CALL,MyBuf,V->var->name,R.var->name,"chiamo operator autoass",LINE_IS_NORMAL);
+													break;
+													}
+
+												}
+
 											StoreVar(outbuf,TS,V->var,R.Q,R.var,R.cost,0);
 											break;
 				            case VALUE_IS_D0:        // non va se (de) o (bc)...
@@ -3015,3 +3109,106 @@ long CPlusMinus::EVAL(char *s) {
   return l;
   }
           
+char *CPlusMinus::FNGetOperatorFunc(const char *n,char *s) {
+
+	if(!n[1]) {
+		switch(*n) {
+			case '+':
+				_tcscpy(s,"op_add");
+				break;
+			case '-':
+				_tcscpy(s,"op_sub");		// o neg
+				break;
+			case '*':
+				_tcscpy(s,"op_mul");
+				break;
+			case '/':
+				_tcscpy(s,"op_div");
+				break;
+			case '=':
+				_tcscpy(s,"op_assign");
+				break;
+			case '[':
+				_tcscpy(s,"op_index");
+				break;
+			case '(':
+				_tcscpy(s,"op_call");
+				break;
+			case '<':
+				_tcscpy(s,"op_lt");
+				break;
+			case '>':
+				_tcscpy(s,"op_gt");
+				break;
+			case '!':
+				_tcscpy(s,"op_not");
+				break;
+			case '~':
+				_tcscpy(s,"op_neg");
+				break;
+			case '&': 
+				_tcscpy(s, "op_bitand"); 
+				break;
+      case '|':
+				_tcscpy(s, "op_bitor"); 
+				break;
+      case '^': 
+				_tcscpy(s, "op_xor"); 
+				break;
+			case '.':
+			case '?':
+			case ':':
+				PROCError(2833,n);
+				return NULL;
+				break;
+			}
+		}
+	else if(!n[2]) {
+		switch(*n) {
+			case '+':
+				if(n[1] == '+') 
+					_tcscpy(s, "op_inc");        // ++
+				else if(n[1] == '=') 
+					_tcscpy(s, "op_add_assign"); // +=
+				break;
+			case '-':
+				if(n[1] == '-') 
+					_tcscpy(s, "op_dec");        // --
+				else if(n[1] == '=') 
+					_tcscpy(s, "op_sub_assign"); // -=
+				else if(n[1] == '>') 
+					_tcscpy(s, "op_arrow"); // ->
+				break;
+			case '!':
+				_tcscpy(s,"op_neq");
+				break;
+			case '=':
+				_tcscpy(s,"op_eq");
+				break;
+			case '<':
+				if(n[1] == '=')
+					_tcscpy(s,"op_le");
+				else
+					_tcscpy(s,"op_lsh");
+				break;
+			case '>':
+				if(n[1] == '=')
+					_tcscpy(s,"op_ge");
+				else
+					_tcscpy(s,"op_rsh");
+				break;
+			case ':':
+				PROCError(2833,n);
+				return NULL;
+				break;
+			}
+		}
+	else if(!_tcscmp(n,"new")) {
+		_tcscpy(s,"op_new");
+		}
+	else if(!_tcscmp(n,"delete")) {
+		_tcscpy(s,"op_delete");
+		}
+
+	return s;
+	}
