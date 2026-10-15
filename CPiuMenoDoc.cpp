@@ -512,9 +512,14 @@ void CPiuMenoDoc::OnCompilaFile() {
 
 	theApp.m_pMainWnd->PostMessage(WM_CLSWINDOW,0,(LPARAM)NULL);
 
+	theApp.totWarnings=theApp.totErrors=0;
 	if(!theApp.CompilaFile(GetPathName()))
 //		AfxMessageBox("Impossibile caricare il compilatore",MB_ICONEXCLAMATION);
 ;
+
+	/// hmmm non va perché arrivano con PostMessage...
+	if(theApp.totErrors>0)
+		MessageBeep(MB_ICONHAND);
 
 fine:
 		;

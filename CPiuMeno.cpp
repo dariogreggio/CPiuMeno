@@ -588,8 +588,9 @@ FILE2.OBJ: FILE2.C
 					int nEqual = strData.Find(_T(':'));
 					if(nEqual != -1)            {
 						CStringEx strFile = strData.Mid(nEqual + 2),S;
-						int wState; // 0 = Chiusa 
+						int8_t wState; // 0 = Chiusa 
 						bool mode;
+						int nLine;
 						S=strFile;
 						strFile.Trim();
 
@@ -605,11 +606,20 @@ FILE2.OBJ: FILE2.C
 							wState=atoi(S);
 							S=S.Mid(S.Find(',')+1);		// 
 							rc.left=atoi(S);
-							//finire
+							S=S.Mid(S.Find(',')+1);		// 
+							rc.left=atoi(S);
+							S=S.Mid(S.Find(',')+1);		// 
+							rc.top=atoi(S);
+							S=S.Mid(S.Find(',')+1);		// 
+							rc.right=atoi(S);
+							S=S.Mid(S.Find(',')+1);		// 
+							rc.bottom=atoi(S);
 //							if(atoi(S)) {		// DOPO perché richiama questa!
 //								OpenDocumentFile(strFile);
 //								}
 
+							S=S.Mid(S.Find(',')+1);		// 
+							nLine=atoi(S);
 
 							}
 
@@ -707,24 +717,45 @@ FILE2.OBJ: FILE2.C
 
 		if(!pDoc) {
 			ReparseProgetto();
+			// 1. Blocca il ridisegno dell'area MDI per evitare flicker e scatti  bah
+			CWnd* pMDIClient = CWnd::FromHandle(((CMainFrame*)m_pMainWnd)->m_hWndMDIClient);
+			if(pMDIClient)
+				pMDIClient->SetRedraw(FALSE);
+			CMDIChildWnd* pMaximizedChild = NULL;
 			for(i=0; i<fileProgetto.GetSize(); i++) {
 				if(fileProgetto[i].wState) {		// (per ora lo usiamo come flag!
 					((CMainFrame*)m_pMainWnd)->ActivateViewByTitle/*OpenDocumentFile*/(fileProgetto[i].nomefile);
 				  CMDIChildWnd* pChild = (CMDIChildWnd*)((CMainFrame*)m_pMainWnd)->MDIGetActive();
 					switch(fileProgetto[i].wState) {
 						case 1:		// minimiz
-//							pChild->/*MDIMinimize() non esiste pd */ShowWindow(SW_SHOWMINIMIZED);
+//							pChild->/*MDIMinimize() non esiste pd */
+							pChild->ShowWindow(SW_SHOWMINIMIZED);
 							break;
 						case 2:		// normale
 			        pChild->ShowWindow(SW_RESTORE);		// direi inutile dopo Activate...
+							pChild->SetWindowPos(NULL, 
+								fileProgetto[i].rc.left, fileProgetto[i].rc.top, 
+								fileProgetto[i].rc.right-fileProgetto[i].rc.left, fileProgetto[i].rc.bottom-fileProgetto[i].rc.top, 
+								SWP_NOZORDER | SWP_NOACTIVATE);
 							break;
 						case 3:		// massimiz
 //							pChild->MDIMaximize();
+// Chiama MDIMaximize sul MAIN FRAME passandogli la finestra figlia! cazzata, e l punto esclamativo ficcatelo nel culo
+//							((CMainFrame*)m_pMainWnd)->MDIMaximize(pChild);
+							// NON massimizzarla subito! Salva il puntatore per dopo. se no le altre restore ecc ripristinano
+              pMaximizedChild = pChild;
 							break;
 						}
-					// FINIRE dopo coordinate :)
-
+				// usare nLine, è +1
 					}
+				}
+			if(pMaximizedChild)
+				pMaximizedChild->MDIMaximize();
+//		    ((CMainFrame*)m_pMainWnd)->MDIMaximize(pMaximizedChild);
+			// 3. Riabilita il ridisegno e aggiorna l'interfaccia
+			if(pMDIClient) {
+				pMDIClient->SetRedraw(TRUE);
+				pMDIClient->RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW);
 				}
 			}
 		return 1;
@@ -910,48 +941,50 @@ int CPiuMenoApp::SaveProject(const char *nomeprj) {
 		for(i=0; i<fileProgetto.GetSize(); i++) {
 			CPiuMenoDoc *pDoc=GetDocByTitle(fileProgetto[i].nomefile);
 			RECT rc={0,0,0,0};
+			int nLine=0;
 			int nState = 0; // 0 = Chiusa di default
 
 			if(pDoc) {
-					CPiuMenoView *w = (CPiuMenoView *)pDoc->getView();
-					if(w) {
-						// Risaliamo alla finestra Frame contenitore (CMDIChildWnd / CChildFrame)
-						CFrameWnd* pFrame = w->GetParentFrame();
-						if(pFrame && ::IsWindow(pFrame->GetSafeHwnd())) {
-							WINDOWPLACEMENT wp;
-							ZeroMemory(&wp, sizeof(WINDOWPLACEMENT));
-							wp.length = sizeof(WINDOWPLACEMENT);
+				CPiuMenoView *w = (CPiuMenoView*)pDoc->getView();
+				if(w) {
+					// Risaliamo alla finestra Frame contenitore (CMDIChildWnd / CChildFrame)
+					CFrameWnd* pFrame = w->GetParentFrame();
+					if(pFrame && ::IsWindow(pFrame->GetSafeHwnd())) {
+						WINDOWPLACEMENT wp;
+						ZeroMemory(&wp, sizeof(WINDOWPLACEMENT));
+						wp.length = sizeof(WINDOWPLACEMENT);
 
-							if (pFrame->GetWindowPlacement(&wp)) {
-								switch (wp.showCmd) {
-									case SW_SHOWMINIMIZED:
-									case SW_MINIMIZE:
-										nState = 1; // Minimizzata
-										break;
-									case SW_SHOWNORMAL:
+						if(pFrame->GetWindowPlacement(&wp)) {
+							switch (wp.showCmd) {
+								case SW_SHOWMINIMIZED:
+								case SW_MINIMIZE:
+									nState = 1; // Minimizzata
+									break;
+								case SW_SHOWNORMAL:
 //											case SW_RESTORED:
-										nState = 2; // Normale
-										break;
-									case SW_SHOWMAXIMIZED:
+									nState = 2; // Normale
+									break;
+								case SW_SHOWMAXIMIZED:
 //											case SW_MAXIMIZE:
-										nState = 3; // Massimizzata
-										break;
-									}
+									nState = 3; // Massimizzata
+									break;
 								}
-							// Se ti servono ancora le coordinate della finestra (in stato normale):
-							// rc = wp.rcNormalPosition;
 							}
+						// Se ti servono ancora le coordinate della finestra (in stato normale):
+						// rc = wp.rcNormalPosition;
 						}
+					nLine=w->GetRichEditCtrl().GetFirstVisibleLine()+1;	// usare current?
 					}
+				}
 
 			if(fileProgetto[i].nomefile.FindNoCase(thePath) >= 0) {
 				S.SplitPath(fileProgetto[i].nomefile,5);
-				wsprintf(myBuf,"# FILE: \"%s\",%u,%u,%u,%u,%u,%u\n",(LPCTSTR)S,fileProgetto[i].flag,nState,
-					rc.left,rc.top,rc.right,rc.bottom);
+				wsprintf(myBuf,"# FILE: \"%s\",%u,%u,%u,%u,%u,%u,%u\n",(LPCTSTR)S,fileProgetto[i].flag,nState,
+					rc.left,rc.top,rc.right,rc.bottom,nLine);
 				}// left è sempre >0 (causa Tree) per cui è ok come flag! top può essere 0
 			else
-				wsprintf(myBuf,"# FILE: \"%s\",%u,%u,%u,%u,%u,%u\n",(LPCTSTR)fileProgetto[i].nomefile,fileProgetto[i].flag,nState,
-					rc.left,rc.top,rc.right,rc.bottom);
+				wsprintf(myBuf,"# FILE: \"%s\",%u,%u,%u,%u,%u,%u,%u\n",(LPCTSTR)fileProgetto[i].nomefile,fileProgetto[i].flag,nState,
+					rc.left,rc.top,rc.right,rc.bottom,nLine);
 			// ev. aggiungere coord finestra
 			file.WriteString(myBuf);
 			}
@@ -1567,6 +1600,9 @@ BOOL CPiuMenoApp::BuildAll(LPCTSTR lpszOutputDir, BOOL bForceRebuild /* = FALSE 
 			}
 		
 		}
+
+	if(totErrors>0)	/// hmmm non va perché arrivano con PostMessage...
+		MessageBeep(MB_ICONHAND);
 
 	S.Format("%s - %u errore(i), %u warning(s)",(LPCTSTR)theTarget,totErrors,totWarnings);
 	WriteOutputWndText(S);

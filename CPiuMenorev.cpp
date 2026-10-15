@@ -744,7 +744,7 @@ read_array_add_cmq:
 										V->var->modif=i;
 										V->var->type=V->type;
 										V->var->size=V->size;
-										V->var->func.value=reg2;
+										V->var->value=reg2;
 										V->var->parm.ofs=l; V->var->parm.flag=1;
 										memcpy(V->dim,R.dim,sizeof(O_DIM));
 										V->flag=1; // v & 2 ? 1 : 0 /*R.flag+*/;		// (CMQ se indice tutto costante, NON devo poi mettere Dn in An
@@ -767,6 +767,7 @@ rifo_struct:
 											PROCError(2753,TS);
 										else
 											PROCError((*TS=='.') ? 2224 : 2223);
+										break;
 										}
 									FNLO(T1S);
 									if(*FNLA(MyBuf) == '(') {
@@ -786,7 +787,7 @@ rifo_inherit:
 											_tcscat(MyBuf,T1S);
 											_tcscat(MyBuf,to_mangle);
 											_tcscat(MyBuf,MyBuf1);
-											R.var=FNCercaFunz(V->tag,T1S,MyBuf1,&inBase);
+											R.var=FNCercaFunz(V->tag,T1S,MyBuf1,TRUE,&inBase);
 
 //											R.var=FNGetAggr(V->tag,MyBuf,(V->type & VARTYPE_CLASS) ? 2 : ((V->type & VARTYPE_STRUCT) ? 1 : 0),&reg2);
 
@@ -952,7 +953,7 @@ rifo_inherit2:
 										if(reg2)
 								  		PROCOper(LINE_TYPE_ISTRUZIONE,"ADD.d");
 										if(isRValue) {
-											i=FNGetAggr2(V->var,R.var,&reg2,&j);
+											i=FNGetAggr2(R.var,&reg2,&j);
 											PROCReadD0(outbuf,R.var,V->type,V->size,0,j,FALSE);		// size sarà sempre int quindi 4!
 											if(i)		// anche signed :)
 							  				PROCOper(LINE_TYPE_ISTRUZIONE,"AND.d");	// mettere in funz a sé?
@@ -968,7 +969,7 @@ rifo_inherit2:
 											V->Q=VALUE_IS_EXPR;	
 											}
 										else {
-											i=FNGetAggr2(V->var,R.var,&reg2,&j);
+											i=FNGetAggr2(R.var,&reg2,&j);
 											PROCReadD0(outbuf,R.var,V->type,V->size,0,j,FALSE);		// size sarà sempre int quindi 4!
 											VPtr=R.var;			// salvo il membro per store
 											V->Q=VALUE_IS_D0;		// FINIRE se lvalue
@@ -1012,7 +1013,7 @@ rifo_inherit2:
 									V->var->type=V->type/* & VARTYPE_NOT_A_POINTER*/;
 									V->var->modif=0;
 									V->var->size=R.size;
-//									V->var->func.value=Regs->D;
+//									V->var->value=Regs->D;
 									V->var->parm.ofs=R.var->type & VARTYPE_BITFIELD ? j : reg2; V->var->parm.flag=1;
                   V->tag=R.var->isInTag;
 									V->flag=1;	//									V->flag= ??  0 per copiare ev. Dn in An, v.array e ptr
@@ -1135,7 +1136,7 @@ LBinaryMinus:
 									V->var->type=V->type;
 									V->var->size=V->size;
 									V->var->classe=R.var->classe;
-									V->var->func.func=(struct VARS *)reg2;		// credo cazzata, 2025, di sicuro per 68000 sopra (perché poi leggo da A0
+									V->var->parent=(struct VARS *)reg2;		// credo cazzata, 2025, di sicuro per 68000 sopra (perché poi leggo da A0
 									V->var->parm.ofs=0; V->var->parm.flag=0;
 									V->tag=R.tag;
 									switch(R.Q) {
@@ -1610,19 +1611,19 @@ myURcost:
 										if(V->var->type & VARTYPE_CLASS) {		// operator overload
 											struct TAGS *inBase;
 											struct VARS *v;
-											_tcscpy(B1S,V->var->hasTag->label);
-											_tcscat(B1S,"_");
-											_tcscat(B1S,FNGetOperatorFunc(TS,AS));
-											_tcscat(B1S,to_mangle);
+//											_tcscpy(B1S,V->var->hasTag->label);
+//											_tcscat(B1S,"_");
+//											_tcscat(B1S,FNGetOperatorFunc(TS,AS));
+//											_tcscat(B1S,to_mangle);
 											getDecor(MyBuf1,R.type,R.size,R.dim,R.tag);
-											_tcscat(B1S,MyBuf1);
-											if(v=FNCercaVar(V->tag,B1S,&inBase)) {
+//											_tcscat(B1S,MyBuf1);
+											if(v=FNCercaFunz(V->tag,FNGetOperatorFunc(TS,AS),MyBuf1,TRUE,&inBase)) {		// = non va ereditato invece!
 												if(R.Q == VALUE_IS_COSTANTE)
 													wsprintf(MyBuf1,"&%s,%u",V->var->name,R.cost->l);	// 
 												else
 													wsprintf(MyBuf1,"&%s,&%s",V->var->name,R.var->name);	// finire costanti ecc
 												//PROCOper(LINE_TYPE_CALL,B1S,MyBuf1,NULL,"chiamo operator",LINE_IS_NORMAL);
-												wsprintf(outbuf,"%s(%s)",B1S,MyBuf1);
+												wsprintf(outbuf,"%s(%s)",v->name,MyBuf1);
 												*MyBuf=*TS=0;
 												v->type |= VARTYPE_FUNC_USED;
 												V->type=v->type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY);
@@ -1648,19 +1649,20 @@ myURcost:
 										if(V->var->type & VARTYPE_CLASS) {		// operator overload
 											struct TAGS *inBase;
 											struct VARS *v;
-											_tcscpy(B1S,V->var->hasTag->label);
-											_tcscat(B1S,"_");
-											_tcscat(B1S,FNGetOperatorFunc(TS,AS));
-											_tcscat(B1S,to_mangle);
+				//							_tcscpy(B1S,V->var->hasTag->label);
+			//								_tcscat(B1S,"_");
+		//									_tcscat(B1S,FNGetOperatorFunc(TS,AS));
+	//										_tcscat(B1S,to_mangle);
 											getDecor(MyBuf1,R.type,R.size,R.dim,R.tag);
-											_tcscat(B1S,MyBuf1);
-											if(v=FNCercaVar(V->tag,B1S,&inBase)) {
+//											_tcscat(B1S,MyBuf1);
+//											if(v=FNCercaVar(V->tag,B1S,&inBase)) {//usare cercafunz
+											if(v=FNCercaFunz(V->tag,FNGetOperatorFunc(TS,AS),MyBuf1,TRUE,&inBase)) {		// = non va ereditato invece!
 												if(R.Q == VALUE_IS_COSTANTE)
 													wsprintf(MyBuf1,"&%s,%u",V->var->name,R.cost->l);	// 
 												else
 													wsprintf(MyBuf1,"&%s,&%s",V->var->name,R.var->name);	// finire costanti ecc
 												//PROCOper(LINE_TYPE_CALL,B1S,MyBuf1,NULL,"chiamo operator",LINE_IS_NORMAL);
-												wsprintf(outbuf,"%s(%s)",B1S,MyBuf1);
+												wsprintf(outbuf,"%s(%s)",v->name,MyBuf1);
 												*MyBuf=*TS=0;
 												v->type |= VARTYPE_FUNC_USED;
 												V->type=v->type & ~(VARTYPE_FUNC | VARTYPE_FUNC_USED | VARTYPE_FUNC_BODY);
@@ -2061,7 +2063,7 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 //		            PROCOut("; fine =",NULL,NULL,NULL,NULL);
 //		            swap(&ROut,&LastOut);
 								if(V->var->modif) {    // se devo sommare un ofs reg, lo faccio ora
-//									subOfsD0(V->var,V->var->size,V->var->func.value,V->var->parm.ofs);
+//									subOfsD0(V->var,V->var->size,V->var->value,V->var->parm.ofs);
 									V->var->modif=0;
 									V->var->parm.ptr=NULL;
 									}
@@ -2259,7 +2261,7 @@ myLog->print(0,"OP logico %u (%u): esco con %x, %x, Brack %u, Co %u\a",OP,oOP,V-
 
 //											PROCStoreD0(V->var,R.Q,R.var,R.cost,isPtrUsed ? TRUE : FALSE);
 											if(V->var->type & VARTYPE_BITFIELD) {
-												i=FNGetAggr2(V->var,V->var,&reg2,&j);
+												i=FNGetAggr2(V->var,&reg2,&j);
 												if(R.Q==VALUE_IS_COSTANTE) {
 													if(reg2 > 0)
 														R.cost->l <<= reg2;
@@ -2411,8 +2413,10 @@ my_add:
 												_tcscat(MyBuf,to_mangle);
 												getDecor(MyBuf1,R.type,R.size,R.dim,R.tag);
 												_tcscat(MyBuf,MyBuf1);
-												if(v=FNCercaVar(V->tag,MyBuf,&inBase)) {		// 
+//												if(v=FNCercaVar(V->tag,MyBuf,&inBase)) {		//usare cercafunz
+												if(v=FNCercaFunz(V->tag,FNGetOperatorFunc(TS,TS),MyBuf1,TRUE,&inBase)) {		// = non va ereditato invece!
 													PROCOper(LINE_TYPE_CALL,MyBuf,V->var->name,R.var->name,"chiamo operator autoass",LINE_IS_NORMAL);
+// METTERE qua direi												wsprintf(outbuf,"%s(%s)",v->name,MyBuf1); e pulire sopra
 													break;
 													}
 
@@ -2680,7 +2684,7 @@ my_aox:
 				              break;
 										case VALUE_IS_D0:
 											{int16_t i2=v;	//??? era al posto di cond
-//	                		subOfsD0(V->var,V->var->size,V->var->func.value,V->var->parm.ofs);	
+//	                		subOfsD0(V->var,V->var->size,V->var->value,V->var->parm.ofs);	
 //											PROCOper(LINE_TYPE_ISTRUZIONE,FNIsOp(TS,Co),TS);
 											if(Pty==14) {              // ritorna expr in hl se serve
 										    PROCReadD0(outbuf,V->var,VARTYPE_PLAIN_INT,0,0,0,FALSE);			// SERVE?? verificare 7/11/25

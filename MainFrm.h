@@ -167,6 +167,7 @@ protected:
 	afx_msg void OnEditCercaintuttiifile();
 	afx_msg void OnUpdateEditCercaintuttiifile(CCmdUI* pCmdUI);
 	afx_msg void OnEditFindCombo();
+	afx_msg void OnUpdateIndicatorOvr(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	afx_msg LRESULT OnAddText(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnClsWindow(WPARAM wParam, LPARAM lParam);

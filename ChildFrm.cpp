@@ -185,7 +185,7 @@ LRESULT CChildFrame::OnFileChangedExternally(WPARAM wParam, LPARAM lParam) {
 
 		CString strMsg;
 		if(!theApp.AutoRicaricaFiles) {
-			strMsg.Format(_T("Il file '%s' è stato modificato all'esterno.\nRicaricarlo?"), pDoc->GetTitle());
+			strMsg.Format(_T("Il file '%s' è stato modificato esternamente.\nRicaricarlo?"), pDoc->GetTitle());
 			if(AfxMessageBox(strMsg, MB_YESNO | MB_ICONQUESTION) == IDYES) {
 					// Ora siamo nel thread GUI nativo, OnOpenDocument è sicuro al 100%!
 				pDoc->OnOpenDocument(pDoc->GetPathName());

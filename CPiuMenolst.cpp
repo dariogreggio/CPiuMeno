@@ -45,10 +45,11 @@ const struct ERRORE CPlusMinus::Errs[]={
   2017,1,"illegal escape sequence",
   2018,1,"unknown character",
   2021,1,"invalid character",
-  2025,1,"enum/struct/union type redefinition: %s",
+  2025,1,"enum/class/struct/union type redefinition: %s",
   2026,1,"type redefinition: %s",
   2027,1,"use of undefined type %s",
   2030,1,"struct/union member redefinition: %s",
+  2032,1,"'%s' : function cannot be member of struct '%s'",		// qua non penso serva!
   2037,1,"left operand specifies undefined struct/union",
   2038,1,"not struct/union member of namespace: %s",   /* anche 2021*/
   2039,1,"not struct/union member: %s",
@@ -77,7 +78,7 @@ const struct ERRORE CPlusMinus::Errs[]={
   2070,1,"illegal sizeof operand",
   2071,1,"bad storage class",
   2078,1,"too many initializers",
-  2079,1,"uses undefined struct/union %s",
+  2079,1,"uses undefined class/struct/union %s",
   2082,1,"%s: redefinition of formal parameter %u",
   2083,1,"redundant declaration of function: %s",
   2084,1,"funtion already has a body: %s",
@@ -121,24 +122,28 @@ const struct ERRORE CPlusMinus::Errs[]={
   2200,1,"warning treated as error",
   2205,1,"can't initialize extern variable",
 	2215,1,"local variable '%s' in naked function '%s' allocated without stack frame",
+	2220,1,"bit field is too large for its type %s",		// gemini diceva 0099...
   2221,1,"'.' left operand points to struct/union, use ->",/*anche 2231*/
   2222,1,"'->' left operand has struct/union type, use .",/*anche 2232*/
   2223,1,"left operand must point to struct/union type",/*anche 2227*/
   2224,1,"left operand must have struct/union type",/*anche 2228*/
+	2248,1,"'%s': cannot access %s member declared in class '%s'",
 	2252,1,"pure specifier can only be specified for functions",
   2275,1,"illegal use of this type as an expression",
   2297,1,"operand is illegal (not integer)",
 // anche ,gemini	2301,1,"local variable '%s' in naked function '%s' allocated without stack frame"
+	2355,1,"'this' : can only be referenced inside non-static member functions",
   2352,1,"illegal call of non-static member function %s",
   2371,1,"redefinition (different basic types): %s",/*anche altri*/		// questa per funzioni, o membri statici
   2437,1,"'%s': already initialized",
   2438,1,"cannot initialize static data member in constructor initializer list",		// anche 2649
   2440,1,"cannot convert from '%s' to %s",		// e mettere il tipo :)
+	2460,1,"'%s' : uses '%s', which is being defined",
 	2504,1,"base class undefined",
   2511,1,"overloaded member function not found in %s",		// anche 2632
   2512,1,"%s: costruttore appropriato non disponibile",
 	2513,1,"'%s' : no variable declared before '%s'",		// 'unsigned int' : no variable declared before '='
-	2523,1,"destructor tag mismatch",
+	2523,1,"destructor tag mismatch: %s",
   2524,1,"a destructor cannot have a return type",
   2528,1,"pointer to reference is illegal",
   2533,1,"constructors cannot have a return type",
@@ -153,7 +158,7 @@ const struct ERRORE CPlusMinus::Errs[]={
 	2588,1,"qualificatore di classe non valido per una dichiarazione globale",		// anche 2253 dice..
 	2597,1,"illegal reference to non-static member '%s'",
   2599,1,"local records are not supported",
-  2601,1,"local functions are not supported",
+  2601,1,"local functions are not supported",		// anche 2601: 'e': function definition is not allowed here
 	2614,1,"%s : illegal member initialization: '%s' is not a base or member",
 	2639,1,"%s : cannot initialize base class '%s' multiple times",
   2649,1,"cannot initialize static data member in constructor initializer list",		// anche 2438
@@ -166,6 +171,7 @@ const struct ERRORE CPlusMinus::Errs[]={
 	2668,1,"ambiguous call to overloaded function %s",
   2671,1,"static member functions cannot be virtual",
 	2678,1,"operatore non trovato %s",
+	2723,1,"'%s::%s' : 'static' illegal on function definition",
   2753,1,"syntax: %s",		// sintassi dello scope, dice
   2831,1,"a destructor cannot have parameters",
   2833,1,"'%s' is not a recognized operator or type",
@@ -346,7 +352,7 @@ int CPlusMinus::PROCV(const char *n) {
   V=Var;
   while(V) {
 		FO->printf("Ogg. %s\t\tTipo %x\tLabel %s\tSize %d\tdi %s\n",
-			V->name,V->type,V->label,V->size,V->func.func ? V->func.func->name : "");
+			V->name,V->type,V->label,V->size,V->parent ? V->parent->name : "");
     FO->printf("Blocco attuale: %d, blocco var: %d\n",InBlock,V->block);
 		if(V->isInTag) {
       FO->printf("\tFa parte del TAG: %s\n",V->isInTag->label);
@@ -390,7 +396,7 @@ int CPlusMinus::PROCD() {
   return 0;
   }
   
-int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func, struct VARS *Vroot) {
+int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func) {
   /*static ??*/ int T=0;
   int I,i;
 	int bs1,bs2;
@@ -400,178 +406,340 @@ int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func, struct VARS *Vro
 	struct TAGS *C;
   
   if(func) {
-    FO->printf("%s: variabili locali\n",func->name);
+    FO->printf("%s: variabili locali -----------------------------------------------------------------------------------\n",func->name);
+	  V=func->members;
 		}
   else {
-    FO->println("\fVariabili globali");
+    FO->println("\fVariabili globali ---------------------------------------------------------------------------------------------------");
+	  V=Var;
 		}
-  V=Var;
+
   while(V) {
 	  struct VARS *v;
+  
+		if(!(T % 60)) {
+			FO->printf("%32s%10s%16s%10s%12s%12s\n\n","Nome","Classe","Tipo","Dim.","Offset/Registro","Tag");
+			}
 
-		/*if(func) {
-			v=func->members;		// usare poi!!
-			while(v) {
-				FO->printf("local nuove %32s\n",v->name);
+		FO->printf("%32s",V->name);
 
-				v=v->next;
-				}
-			}*/
+//    i=26-strlen(Var[T].name)/2;
+//    while(i--)
+//      FO->put('.',FO);
+//    FO->printf("\t");
+		switch(V->classe) {
+			case CLASSE_EXTERN:
+				p="extern";
+				break;
+			case CLASSE_GLOBAL:
+				p="global";
+				break;
+			case CLASSE_STATIC:
+				p="static";
+				break;
+			case CLASSE_AUTO:
+				i=V->parm.ofs;
+				if(i<0)
+					p="auto";
+				else 
+					p="param";
+				break;
+			case CLASSE_REGISTER:
+				p="register";
+				break;
+			case CLASSE_MEMBER:		// qua no cmq!
+			case CLASSE_MEMBER_STATIC:
+			case CLASSE_MEMBER_VIRTUAL:
+				p="ERRORE";	//:)
+				break;
+			}
+		FO->printf("%12s",p);
+//	  FO->printf("\t");
 
-    
-		if(V->func.func==func) {
-			if(!(T % 60)) {
-				FO->printf("\n%32s%10s%16s%10s%12s%8s%12s\n\n","Nome","Classe","Tipo","Dim.","Offset/Registro","Vis.","Tag");
-				}
+		if(V->type & VARTYPE_FUNC) {
+			if(V->type & VARTYPE_FUNC_POINTER)
+				p="funct/ptr";
+			else
+				p="function";
+			}
+		// VA TUTTO RIVISTO, i tipi possono miscelarsi...
 
-			FO->printf("%32s",V->name);
-
-	//    i=26-strlen(Var[T].name)/2;
-	//    while(i--)
-	//      FO->put('.',FO);
-	//    FO->printf("\t");
-			switch(V->classe) {
-				case CLASSE_EXTERN:
-					p="extern";
-					break;
-				case CLASSE_GLOBAL:
-					p="global";
-					break;
-				case CLASSE_STATIC:
-					p="static";
-					break;
-				case CLASSE_AUTO:
-					i=-1;		// serve qua??
-					if(i<0)
-						p="auto";
-					else 
-						p="param";
-					break;
-				case CLASSE_REGISTER:
-					p="register";
-					break;
-				case CLASSE_MEMBER:
-					p="member";
-					break;
-				case CLASSE_MEMBER_STATIC:
-					p="st. member";
-					break;
-				case CLASSE_MEMBER_VIRTUAL:
-					p="virt.member";
-					break;
-				}
-			FO->printf("%12s",p);
-	//	  FO->printf("\t");
-
-			if(V->type & VARTYPE_FUNC) {
-				if(V->type & VARTYPE_FUNC_POINTER)
-					p="funct/ptr";
+		else if(V->type & VARTYPE_ARRAY) {
+			p=myBuf;
+			int j=0;
+			while(V->dim[j] && j<MAX_DIM)
+				j++;
+			sprintf(myBuf,"array[%u]",j);
+			}
+		else if(V->type & VARTYPE_IS_POINTER) 
+			p="pointer";
+		else if(V->type & VARTYPE_REFERENCE) 
+			p="reference";		// in teoria può essere anche reference a pointer...
+		else {
+			if(V->type & (VARTYPE_CLASS))
+				p="class";
+			else if(V->type & (VARTYPE_UNION | VARTYPE_STRUCT))
+				p="struct/union";
+			else if(V->type & VARTYPE_FLOAT)
+				p="float";
+			else if(V->type & VARTYPE_BITFIELD)
+				p="bitfield";
+			else {             
+				p=myBuf;
+				if(V->type & VARTYPE_UNSIGNED)
+					_tcscpy(myBuf,"unsigned ");
 				else
-					p="function";
-				}
-			// VA TUTTO RIVISTO, i tipi possono miscelarsi...
-
-			else if(V->type & VARTYPE_ARRAY) {
-				p=myBuf;
-				int j=0;
-				while(V->dim[j] && j<MAX_DIM)
-					j++;
-				sprintf(myBuf,"array[%u]",j);
-				}
-			else if(V->type & VARTYPE_IS_POINTER) 
-				p="pointer";
-			else if(V->type & VARTYPE_REFERENCE) 
-				p="reference";		// in teoria può essere anche reference a pointer...
-			else {
-				if(V->type & (VARTYPE_CLASS))
-					p="class";
-				else if(V->type & (VARTYPE_UNION | VARTYPE_STRUCT))
-					p="struct/union";
-				else if(V->type & VARTYPE_FLOAT)
-					p="float";
-				else if(V->type & VARTYPE_BITFIELD)
-					p="bitfield";
-				else {             
-					p=myBuf;
-					if(V->type & VARTYPE_UNSIGNED)
-						_tcscpy(myBuf,"unsigned ");
-					else
-						*myBuf=0;
-					if(V->size == INT_SIZE) {
-						_tcscat(myBuf,"int ");
-						}
-					else {  
-						switch(V->size) {
-							case 1:
-								_tcscat(myBuf,"char ");
-								break;
-							case 2:
-								_tcscat(myBuf,"short ");
-								break;
-							case 4:
-								_tcscat(myBuf,"long ");
-								break;
-							} 
-						}
-					if(V->type & VARTYPE_FAR)
-						_tcscat(myBuf,"far ");
+					*myBuf=0;
+				if(V->size == INT_SIZE) {
+					_tcscat(myBuf,"int ");
 					}
-
+				else {  
+					switch(V->size) {
+						case 1:
+							_tcscat(myBuf,"char ");
+							break;
+						case 2:
+							_tcscat(myBuf,"short ");
+							break;
+						case 4:
+							_tcscat(myBuf,"long ");
+							break;
+						} 
+					}
+				if(V->type & VARTYPE_FAR)
+					_tcscat(myBuf,"far ");
 				}
-			FO->printf("%16s",p);
 
-	//	  FO->printf("\t");
-			if(V->type & VARTYPE_FUNC) {
-				p=myBuf;
+			}
+		FO->printf("%16s",p);
+
+//	  FO->printf("\t");
+		if(V->type & VARTYPE_FUNC) {
+			p=myBuf;
 //				p="***";
-				sprintf(myBuf,"%u %c",V->size,V->type & VARTYPE_POINTER ? '*' : ' ');
+			sprintf(myBuf,"%u %c",V->size,V->type & VARTYPE_POINTER ? '*' : ' ');
+			}
+		else {
+			p=myBuf;
+			if(V->type & VARTYPE_ARRAY) {
+				if(V->type & VARTYPE_IS_POINTER)
+					sprintf(myBuf,"%u(%u)",getPtrSize(V->type),FNGetArraySize(V));
+				else
+					sprintf(myBuf,"%u",FNGetArraySize(V));
 				}
 			else {
-				p=myBuf;
-				if(V->type & VARTYPE_ARRAY)
-					sprintf(myBuf,"%u",FNGetArraySize(V));
-				else {
-					if(V->type & (VARTYPE_STRUCT | VARTYPE_UNION | VARTYPE_CLASS))
+				if(V->type & (VARTYPE_STRUCT | VARTYPE_UNION | VARTYPE_CLASS)) {
+					if(V->type & VARTYPE_IS_POINTER)
+						sprintf(myBuf,"%u(%u)",getPtrSize(V->type),V->size);
+					else
 						sprintf(myBuf,"%u",V->size);
-					else if(V->type & VARTYPE_BITFIELD) {
-						int j;
-						j=FNGetAggr2(NULL,V,&bs1,&bs2);
-						sprintf(myBuf,"%u",bs2);
+						}
+				else if(V->type & VARTYPE_BITFIELD) {
+					int j;
+					j=FNGetAggr2(V,&bs1,&bs2);
+					sprintf(myBuf,"%u",bs2);
+					}
+				else {
+					if(V->type & VARTYPE_IS_POINTER)
+						sprintf(myBuf,"%u",getPtrSize(V->type));
+					else
+						sprintf(myBuf,"%u",V->size);
+					}
+				}
+			}
+		FO->printf("%9s",p);
+
+		if(V->type & VARTYPE_BITFIELD) {
+			sprintf(myBuf,"%u",bs1);
+			}
+		else {
+			if(V->classe==CLASSE_AUTO) {
+				p=myBuf;
+				I=0;
+				sprintf(myBuf,"%d",V->parm.ofs);
+				}
+			else {
+				p="***";
+  			}
+			}
+		FO->printf("%7s",p);
+
+		if(V->classe==CLASSE_REGISTER) {
+
+			}
+		else
+			*myBuf=0;
+
+		_tcscat(myBuf,"          ");
+
+		if(V->isInTag) {
+			_tcscat(myBuf,"\t\t(di:");
+			_tcscat(myBuf,V->isInTag->label);
+			_tcscat(myBuf,")");
+			}
+		if(V->hasTag) {
+			_tcscat(myBuf,"\t\t");
+			_tcscat(myBuf,V->hasTag->label);
+			}
+	
+		FO->println(myBuf);
+		T++;
+		if(!(T % 60)) {
+			FO->println("\f");		// stacco meglio
+			}
+
+    V=V->next;
+    }
+	FO->putcr();
+
+	if(!func) {
+		T=0;
+    FO->println("\fOggetti aggregati ---------------------------------------------------------------------------------------------------");
+    C=StrTag;
+    while(C) {
+			if(!(T % 60)) {
+				FO->printf("%32s%20s       %8s%10s%10s%13s\n\n","Nome","Tipo","Dim.","Offset","Vis","Tag");
+				}
+
+			FO->printf("\t%s\n",C->label);
+
+		  V=C->member;
+			I=0;
+			while(V) {
+				struct VARS *v;
+
+				FO->printf("%32s",V->name);
+
+				switch(V->classe) {
+					case CLASSE_EXTERN:
+					case CLASSE_GLOBAL:
+					case CLASSE_STATIC:
+					case CLASSE_AUTO:
+					case CLASSE_REGISTER:
+						p="ERRORE";	//:)
+						break;
+					case CLASSE_MEMBER:
+						p="member";
+						break;
+					case CLASSE_MEMBER_STATIC:
+						p="st. member";
+						break;
+					case CLASSE_MEMBER_VIRTUAL:
+						p="virt.member";
+						break;
+					}
+				FO->printf("%12s",p);
+//	  FO->printf("\t");
+
+				// riciclo, e modifico, il tutto sopra...
+				if(V->type & VARTYPE_FUNC) {
+					if(V->type & VARTYPE_FUNC_POINTER)
+						p="funct/ptr";
+					else
+						p="function";
+					}
+				// VA TUTTO RIVISTO, i tipi possono miscelarsi...
+
+				else if(V->type & VARTYPE_ARRAY) {
+					p=myBuf;
+					int j=0;
+					while(V->dim[j] && j<MAX_DIM)
+						j++;
+					sprintf(myBuf,"array[%u]",j);
+					}
+				else if(V->type & VARTYPE_IS_POINTER) 
+					p="pointer";
+				else {
+					if(V->type & VARTYPE_CLASS)
+						p="class";
+					else if(V->type & (VARTYPE_UNION | VARTYPE_STRUCT))
+						p="struct/union";
+					else if(V->type & VARTYPE_FLOAT)
+						p="float";
+					else if(V->type & VARTYPE_BITFIELD)
+						p="bitfield";
+					else {             
+						p=myBuf;
+						if(V->type & VARTYPE_UNSIGNED)
+							_tcscpy(myBuf,"unsigned ");
+						else
+							*myBuf=0;
+						if(V->size == INT_SIZE) {
+							_tcscat(myBuf,"int ");
+							}
+						else {  
+							switch(V->size) {
+								case 1:
+									_tcscat(myBuf,"char ");
+									break;
+								case 2:
+									_tcscat(myBuf,"short ");
+									break;
+								case 4:
+									_tcscat(myBuf,"long ");
+									break;
+								} 
+							}
+						if(V->type & VARTYPE_FAR)
+							_tcscat(myBuf,"far ");
+	#if MICROCHIP
+						if(V->type & VARTYPE_ROM)
+							_tcscat(myBuf,"rom ");
+	#endif
+						}
+
+					}
+				FO->printf("%16s",p);
+
+		//	  FO->printf("\t");
+				if(V->type & VARTYPE_FUNC) {
+					p=myBuf;
+	//				p="***";
+					sprintf(myBuf,"%u %c",V->size,V->type & VARTYPE_POINTER ? '*' : ' ');
+					}
+				else {
+					p=myBuf;
+					if(V->type & VARTYPE_ARRAY) {
+						if(V->type & VARTYPE_IS_POINTER)
+							sprintf(myBuf,"%u(%u)",getPtrSize(V->type),FNGetArraySize(V));
+						else
+							sprintf(myBuf,"%u",FNGetArraySize(V));
 						}
 					else {
-						if(V->type & VARTYPE_IS_POINTER)
-							sprintf(myBuf,"%u",getPtrSize(V->type));
-						else
-							sprintf(myBuf,"%u",V->size);
+						if(V->type & (VARTYPE_STRUCT | VARTYPE_UNION | VARTYPE_CLASS)) {
+							if(V->type & VARTYPE_IS_POINTER)
+								sprintf(myBuf,"%u(%u)",getPtrSize(V->type),V->size);
+							else
+								sprintf(myBuf,"%u",V->size);
+							}
+						else if(V->type & VARTYPE_BITFIELD) {
+							int j;
+							j=FNGetAggr2(V,&bs1,&bs2);
+							sprintf(myBuf,"%u",*(uint8_t*)V->label);
+							}
+						else {
+							if(V->type & VARTYPE_IS_POINTER)
+								sprintf(myBuf,"%u",getPtrSize(V->type));
+							else
+								sprintf(myBuf,"%u",V->size);
+							}
 						}
 					}
-				}
-			FO->printf("%9s",p);
+				FO->printf("%9s",p);
 
-			if(V->type & VARTYPE_BITFIELD) {
-				sprintf(myBuf,"%u",bs1);
-				}
-			else {
-				if(V->classe==CLASSE_AUTO) {
-					p=myBuf;
-					I=0;
-					sprintf(myBuf,"%d",I);
+				p=myBuf;
+				if(V->type & VARTYPE_BITFIELD) {
+					sprintf(myBuf,"%u:%u",bs2,bs1);
 					}
 				else {
-					p="***";
-  				}
-				}
-			FO->printf("%7s",p);
+					if(V->type & VARTYPE_FUNC)
+						sprintf(myBuf,"***");
+					else
+						sprintf(myBuf,"%u",V->parm.ofs /*I*/);
+					}
+				FO->printf("%8s    ",p);
 
-			if(V->classe==CLASSE_REGISTER) {
-
-				}
-			else
 				*myBuf=0;
-
-			_tcscat(myBuf,"            ");
-
-			if(V->classe >= CLASSE_MEMBER) {
 				switch(V->visibility) {
 					case VIS_PUBLIC:
 						_tcscat(myBuf," public    ");
@@ -583,38 +751,22 @@ int CPlusMinus::PROCVarList(COutputFile *FO, struct VARS *func, struct VARS *Vro
 						_tcscat(myBuf," private   ");
 						break;
 					}
-				}
-			else
-				_tcscat(myBuf,"     -       ");
 
-			if(V->isInTag) {
-				_tcscat(myBuf,"\t\t(di:");
-				_tcscat(myBuf,V->isInTag->label);
-				_tcscat(myBuf,")");
-				}
-			if(V->hasTag) {
-				_tcscat(myBuf,"\t\t");
-				_tcscat(myBuf,V->hasTag->label);
-				}
-		
+				if(V->hasTag) {
+					_tcscat(myBuf,"\t\t");
+					_tcscat(myBuf,V->hasTag->label);
+					}
 
-			FO->println(myBuf);
-			T++;
-			if(!(T % 60)) {
-				FO->put('\f');
-				}
-			}
-    V=V->next;
-    }
-	FO->putcr();
+				FO->println(myBuf);
+				T++;
+				if(!(T % 60)) {
+					FO->println("\f");		// stacco meglio
+					}
 
-	if(!func && !Vroot) {
-		T=0;
-    FO->println("\fOggetti aggregati");
-    C=StrTag;
-    while(C) {
-			FO->printf("%32s %16s %32s\n",C->label,C->type ? (C->type==2 ? "class" : "struct") : "union",
-				C->member ? C->member->label : "");
+				V=V->next;
+				}
+			FO->putcr();
+
       C=C->next;
       } 
 		}

@@ -210,6 +210,23 @@ enum CPlusMinus::ARITM_OP CPlusMinus::FNGetAritElem(char *outbuf,int8_t *OP, cha
 //				_tcscat(outbuf,OS);
         return ARITM_IS_OPERANDO;
         }
+/*			else if(!_tcscmp(TS,the_this)) {		// no non serve ovviamente
+				if(CurrFunc) {
+					if(CurrFunc->classe==CLASSE_MEMBER || CurrFunc->classe==CLASSE_MEMBER_VIRTUAL) {
+						O->size=CurrFunc->isInTag->size;
+						O->type=VARTYPE_POINTER;
+						O->tag=CurrFunc->isInTag;
+						}
+					else
+						PROCError(2355,the_this);
+					}
+				else
+					PROCError(2355,the_this);
+				_tcscpy(outbuf,the_this);
+
+
+        O->Q=VALUE_IS_VARIABILE;
+        }*/
 			else if(!_tcscmp(TS,"new")) {
 				struct VARS *v;
 				struct TAGS *tag,*inBase;
@@ -262,7 +279,7 @@ enum CPlusMinus::ARITM_OP CPlusMinus::FNGetAritElem(char *outbuf,int8_t *OP, cha
 							l3=FIn->GetPosition();
 							collectParmList(O->var->decor);
 
-							if(!FNCercaCtor(tag,O->var->decor,TRUE,&inBase))
+							if(!FNCercaCtor(tag,O->var->decor,TRUE,TRUE,&inBase))
 								PROCError(2512,MyBuf);		// 
 
 							FIn->RestorePosition(l3);
@@ -359,6 +376,21 @@ enum CPlusMinus::ARITM_OP CPlusMinus::FNGetAritElem(char *outbuf,int8_t *OP, cha
 				v=NULL;
 				if(CurrFunc && CurrFunc->isInTag) {
 					v=FNCercaVar(CurrFunc->isInTag,TS,&inBase);
+//					v=FNCercaVar(TS,FALSE,&inBase);
+					if(inBase) {		// se non era nella classe stessa...
+						if(v->visibility == VIS_PRIVATE) {
+							struct TAGS *b=inBase->friends;
+							if(inBase->friends) {
+								while(b) {
+									if(b==CurrFunc->isInTag)
+										break;
+									b=b->next;
+									}
+								}
+							if(!b)
+								PROCError(2248, v->name,v->visibility == VIS_PRIVATE ? "private" : "protected" ,inBase->label);// finire! friends
+							}
+						}
 					}
 				if(!v) {
 					if(*FNLA(MyBuf)=='(' && !c_mode) {
@@ -490,7 +522,7 @@ int CPlusMinus::subGetType(O_TYPE *t, O_SIZE *s, O_DIM dim, long TT) {
     case ':':
 			if(isdigit(*FNLA(MyBuf))) {
 				*t |= VARTYPE_BITFIELD;
-				PROCWarn(2000,"bitfield");		// 
+      PROCWarn(2000,"occhio se mix bitfield e non");		// 
 				}
 			else
 //				OT=FIn->GetPosition();
@@ -554,56 +586,66 @@ rifo:
 			FNGoToEOL();
 			}*/
     else {
+      OT=FIn->GetPosition();
 was_struct:
-      *s=0;
-      V=Var;
-      while(V) {
-        if(V->isInTag==*tag) {
-          I=V->size;
-          if(V->type & VARTYPE_ARRAY) {
-            I=FNGetArraySize(V);
-            }
-          else {
-            if(V->type & VARTYPE_IS_POINTER)
-              I=getPtrSize(V->type);
-            }
-          if(T & (VARTYPE_STRUCT | VARTYPE_CLASS)) {
-	          if(V->type & VARTYPE_BITFIELD) {
+			if(!(*tag)->size) {
+				(*tag)->size=0;	//:)
+				V=(*tag)->member;
+				while(V) {		// viene fatto alla dichiarazione/definizione struct
+					I=V->size;
+					if(!(V->type & VARTYPE_FUNC))	{	// qua ci sono i parametri! e cmq non avrebbe senso; e se puntatore?
+						if(I > 1 /*StructPacking*//*INT_SIZE*/)
+							V->parm.ofs=(((*tag)->size+StructPacking-1) & -StructPacking);
+						else
+							V->parm.ofs=(*tag)->size;
+						}
+					if(V->type & VARTYPE_BITFIELD)
+						V->parm.ofs = (V->parm.ofs/(8*INT_SIZE)) * INT_SIZE;
+					if(V->type & VARTYPE_ARRAY) {		// potrebbe essere array di func :)
+						I=FNGetArraySize(V);
+						}
+					else {
+						if(V->type & VARTYPE_IS_POINTER)
+							I=getPtrSize(V->type);
+						else if(V->type & VARTYPE_FUNC_POINTER)
+							I=getPtrSize(V->type);
+						}
+					if(T & (VARTYPE_STRUCT | VARTYPE_CLASS)) {
+						if(V->type & VARTYPE_BITFIELD) {
 							T |= VARTYPE_BITFIELD;		// me lo segno per dopo! (il padre NON ha l'attributo, anche perché possono coesistere - FINIRE
+							(*tag)->size += MAKEPTRBITF(V->label);
 							}
 						else {
-							if(I>= StructPacking/*INT_SIZE*/) {
-								*s=((*s+StructPacking-1) & -StructPacking) +I;
-								}
+							if(I > 1 /*StructPacking*//*INT_SIZE*/)
+								(*tag)->size=(((*tag)->size+StructPacking-1) & -StructPacking) +I;
 							else
-								*s += I;
+								(*tag)->size += I;
 							}
-            }
-          else {
-            if(I > *s) 
-              *s=I;
-            }
-          }
-        V=V->next;
-        }
-/*      V=Var;                   // non dovrebbe servire, calcola dim struct
-      while(V) {
-        if(V->hasTag==*tag)
-          V->size=*s;
-        V=V->next;
-        }
-        */
+						}
+					else {
+						if(I > (*tag)->size) 
+							(*tag)->size=I;
+						}
+					V=V->next;
+					}
+
+	/*      V=(*tag)->member;                   // non dovrebbe servire, calcola dim struct
+				while(V) {
+					V->size=*s;
+					V=V->next;
+					}
+					*/
+				}
+			*s=(*tag)->size;
       if(T & VARTYPE_BITFIELD) {
-				S=(*s+8)/8;
-				S = (S+INT_SIZE-1) & -INT_SIZE;
+				S=(*s+7)/8;
+				S = (S+StructPacking/*INT_SIZE*/-1) & -StructPacking/*INT_SIZE*/;
+				(*tag)->size=S;		// in byte cmq
+				T &= ~VARTYPE_BITFIELD;		// v.sopra
 				}
 			else
 				S=*s;
       *t=T;
-      OT=FIn->GetPosition();
-      }
-    if(*MyBuf==';') {
-      return 0;
       }
     }
   else {
@@ -662,7 +704,10 @@ was_struct:
 	    }
 		if(I==MaxTypes) {
 			if(*FNLA(MyBuf) != '(' && (*tag=FNCercaAggr(AS,FALSE))) {
-				*t=(*tag)->type ? ((*tag)->type==2 ? VARTYPE_CLASS : VARTYPE_STRUCT) :VARTYPE_UNION;
+				T=*t=(*tag)->type ? ((*tag)->type==2 ? VARTYPE_CLASS : VARTYPE_STRUCT) :VARTYPE_UNION;
+				_tcscpy(outbuf,T ? "struct" : "union");
+				_tcscat(outbuf," ");
+				_tcscat(outbuf,(*tag)->label);
 				goto was_struct;
 				}
 			}
@@ -748,6 +793,10 @@ rifo_attr:
   else {
     long l2=FIn->GetPosition();
 		FNLO(AS);
+		if(!_tcscmp(AS,"operator")) {
+	    l2=FIn->GetPosition();
+			FNLO(AS);
+			}
 		FNLA(MyBuf);
 
 		if(!_tcscmp(MyBuf,"::")) {
@@ -866,73 +915,83 @@ struct VARS *CPlusMinus::FNGetAggr(struct TAGS *Tag, const char *TS, int8_t F, i
   O_TYPE T;
   struct VARS *V;
   
+  V=Tag->member;
+  while(V) {
+    if(!_tcscmp(V->name,TS)) {
+			*o=V->parm.ofs;
+			return V;
+			}
+    V=V->next;
+    }
+
+	return NULL;
+// dovrebbe andare così, 2026, usiamo ofs calcolato alla dichiarazione in GetType
+
+
 	if(o)
 		*o=0;
-  V=Var;
+  V=Tag->member;
   while(V) {
 //    myLog->print(0,"sono su %Fs..",V->name);
-    if(V->isInTag==Tag) {
-//    myLog->print(0,("ok\n");
-      if(!_tcscmp(V->name,TS)) {
-				if(V->type & VARTYPE_BITFIELD) {
-					}
-				else {
-					if(((!T) && (S==INT_SIZE)) || ((T & VARTYPE_IS_POINTER) && !(T & VARTYPE_ARRAY))) {
-						if(S>1) {
-							if(o)
-								*o=((*o+StructPacking-1) & -StructPacking);
-							}
-						// v. anche  attrib & VAR_ATTRIB_PACKED;
-						}
-					else {
+    if(!_tcscmp(V->name,TS)) {
+			if(V->type & VARTYPE_BITFIELD) {
+				}
+			else {
+				if(((!T) && (S==INT_SIZE)) || ((T & VARTYPE_IS_POINTER) && !(T & VARTYPE_ARRAY))) {
+					if(S>1) {
 						if(o)
 							*o=((*o+StructPacking-1) & -StructPacking);
 						}
+					// v. anche  attrib & VAR_ATTRIB_PACKED;
 					}
-        break;
+				else {
+					if(o)
+						*o=((*o+StructPacking-1) & -StructPacking);
+					}
+				}
+      break;
 //      o%=(o%+3)&& &FFFC
-	      }   
+	    }   
+	  else {
+	    T=V->type;
+	    S=V->size;
+	    if(T & VARTYPE_ARRAY) {
+	      S = FNGetArraySize(V);
+	      }
 	    else {
-	      T=V->type;
-	      S=V->size;
-	      if(T & VARTYPE_ARRAY) {
-	        S = FNGetArraySize(V);
-	        }
-	      else {
-	        if(T & VARTYPE_IS_POINTER)
-	          S=getPtrSize(T);
-	        }
-		    switch(F) {
-					case 2:		// classe
-					case 1:		// struct
-						if(V->type & VARTYPE_BITFIELD) {
+	      if(T & VARTYPE_IS_POINTER)
+	        S=getPtrSize(T);
+	      }
+		  switch(F) {
+				case 2:		// classe
+				case 1:		// struct
+					if(V->type & VARTYPE_BITFIELD) {
 
-							}
-						else {
-							if(((!T) && (S==INT_SIZE)) || ((T & VARTYPE_IS_POINTER) && !(T & VARTYPE_ARRAY))) {
-		//		        *o=((*o+INT_SIZE-1) & -INT_SIZE) +S;
-								if(S>1) {
-									if(o)
-										*o=((*o+StructPacking-1) & -StructPacking) +S;
-									}
-								else {
-									if(o)
-										*o=S;
-									}
-								// v. anche  attrib & VAR_ATTRIB_PACKED;
+						}
+					else {
+						if(((!T) && (S==INT_SIZE)) || ((T & VARTYPE_IS_POINTER) && !(T & VARTYPE_ARRAY))) {
+	//		        *o=((*o+INT_SIZE-1) & -INT_SIZE) +S;
+							if(S>1) {
+								if(o)
+									*o=((*o+StructPacking-1) & -StructPacking) +S;
 								}
 							else {
 								if(o)
-		//		        *o += S;
-									*o=((*o+StructPacking-1) & -StructPacking) +S;
+									*o=S;
 								}
-							}  
-						break;
-					case 0:		// union
-						break;
-					}  
-	      }
-      }
+							// v. anche  attrib & VAR_ATTRIB_PACKED;
+							}
+						else {
+							if(o)
+	//		        *o += S;
+								*o=((*o+StructPacking-1) & -StructPacking) +S;
+							}
+						}  
+					break;
+				case 0:		// union
+					break;
+				}  
+	    }
     V=V->next;
     }
 
@@ -963,37 +1022,38 @@ struct VARS *CPlusMinus::FNGetAggr(struct TAGS *Tag, int8_t F) {  //F=2 per clas
   return V;
   }
 
-uint32_t CPlusMinus::FNGetAggr2(struct VARS *p, struct VARS *v, int *o, int *o2) {  // restituisce pos e mask per bitfield
+uint32_t CPlusMinus::FNGetAggr2(struct VARS *v, int *o, int *o2) {  // restituisce pos e mask per bitfield, 
 	struct VARS *V;
 	uint32_t i,j;
-	O_TYPE T;
 	char TS[64];
 
   i=0;
-  V=Var;
+//	if(!v->isInTag)
+	//	PROCError(1001
+
+  V=v->isInTag->member;
   while(V) {
-    if(V->isInTag==v->isInTag) {
-			T=V->type;
-			}
-    if(V->isInTag==v->isInTag) {
-			if(!_tcscmp(V->name,v->name)) {
-				break;
-				}   
-			else {
-				if(v->type & VARTYPE_BITFIELD) {
-					// vedere se consentire mix bitfield e non! ovunque
-					}
-				if(T & VARTYPE_STRUCT) {
-					if(i)
-						;
-					}  
+		if(!_tcscmp(V->name,v->name)) {
+			if(i+MAKEPTRBITF(V->label) > INT_SIZE*8) {		// se a-cavallo...  ev. Packed/StructPacking? forse su bitfield no
+				i= (i+INT_SIZE-1) & -INT_SIZE;
 				}
+			break;
+			}   
+		else {
+			if(v->type & VARTYPE_BITFIELD) {
+				// vedere se consentire (sì!) mix bitfield e non! ovunque
+				}
+			if(v->isInTag->type /* ossia struct o class */) {
+				i += MAKEPTRBITF(V->label);
+				if(i)
+					;
+				}  
 			}
     V=V->next;
     }
 
 	*o=j=i;
-	if(i) {		// safety :)
+	if(i=MAKEPTRBITF(V->label)) {		// safety :)
 		uint32_t k= j ? (1 << j) : 1;
 		j=0;
 		do {
@@ -1028,6 +1088,7 @@ struct TAGS *CPlusMinus::subAllocTag(const char *TS,int8_t t) {
     LTag=StrTag=C;
     }
 	C->func=CurrFunc;
+	C->size=0;
   C->next=(struct TAGS*)NULL;
 	C->member=(struct VARS*)NULL;
 	C->parent=(struct TAGS*)NULL;
@@ -1039,6 +1100,24 @@ struct TAGS *CPlusMinus::subAllocTag(const char *TS,int8_t t) {
 	C->blockId=OldTX[InBlock].id;
   return C;
   }
+
+void CPlusMinus::addMember(struct TAGS *C, struct VARS *V) {
+
+	if(C->member) {
+		struct VARS *v=C->member,*v2;
+		while(v) {
+			v2=v;
+			v=v->next;
+			}
+		v2->next=V;
+		V->prev=v2;
+		}
+	else {
+		C->member=V;
+		V->prev=(struct VARS*)NULL;
+		}
+	V->isInTag=C;
+	}
 
 struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
   bool Go=0;
@@ -1056,11 +1135,13 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 	struct TAGS *inBase;
 	enum VAR_CLASSES classe;
 
+	DefaultVisibility=VIS_PUBLIC;
   if(*FNLA(MyBuf) != '{') {
     FNLO(TS);
     C=FNCercaAggr(TS,FALSE);
     if(!C) {
       C=subAllocTag(TS,type); 
+rifo_class:
       if(*FNLA(MyBuf) == ';') {		// forward declaration
 //				wsprintf(MyBuf,"%s %s",type==0 ? "union" : "struct",C->label);
 				PROCOper(LINE_TYPE_DATA_DEF,type==0 ? "union" : "struct",C->label);
@@ -1090,11 +1171,21 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 				else {
 					//sovrascrive vptr, se serve
 					}
+
+				// IN TEORIA esiste ereditarietà multipla...
+				if(*FNLA(MyBuf) == ',') {
+					PROCWarn(1001,"ereditarietà multipla non implementata");
+					}
+
 				PROCCheck('{');
 				}
       else if(*MyBuf != '{') {		
-        PROCError(2079,TS);
+//				if(iscsym(*MyBuf))		// forward declaration di oggetto aggregato, accettare solo se puntatore
+//					goto fine_class_noctors;
+//				else
+//					PROCError(2079,TS);
 				Go=TRUE;
+				goto fine_class_noctors;		// meglio
 				}
       else {
         FNLO(TS);
@@ -1119,7 +1210,7 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 			else {
 				if(C->type != type)
 					PROCError(2371,TS);
-				if(*MyBuf == '{') {
+				if(*MyBuf == '{' || *MyBuf == ':') {
 					if(FNHasVar(C))	{		// se era già stata definita
 						_tcscpy(MyBuf,"tag ");
 						_tcscat(MyBuf,TS);
@@ -1127,6 +1218,9 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 						Go=TRUE;
 						}
 					else {
+
+						goto rifo_class;
+
 //						wsprintf(MyBuf,"%s %s {",type==0 ? "union" : "struct",C->label);
 						PROCOper(LINE_TYPE_DATA_DEF_CONT,type==0 ? "union" : "struct",C->label,"{");
 //						PROCOper(LINE_TYPE_DATA_DEF_CONT,MyBuf);
@@ -1148,6 +1242,10 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
       }
     }
   else {
+		if(type == 2)			// finire cmq
+	 		DefaultVisibility=VIS_PRIVATE;
+		else
+  		DefaultVisibility=VIS_PUBLIC;
     C=subAllocTag(FNGetLabel(MyBuf,3),type); 
     PROCCheck('{');
 		wsprintf(MyBuf,"%s %s {",type==0 ? "union" : "struct",C->label);
@@ -1161,11 +1259,6 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 		wsprintf(MyBuf,"\tstruct %s %s",C->parent->label,ptr_to_base2);
 		PROCOper(LINE_TYPE_DATA_DEF,MyBuf,NULL,NULL,"class");
 		}
-
-	if(type == 2)
-	 	DefaultVisibility=VIS_PRIVATE;
-	else
-  	DefaultVisibility=VIS_PUBLIC;
 
   if(!Go) {                 // guardo i singoli membri
     do {
@@ -1226,24 +1319,36 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 			else if(!_tcscmp(TS,"friend")) {		// 
 				PROCCheck("class");		// secondo gemini in ultime versioni spec. può non esserci...
 	      FNLO(TS);
-				struct TAGS *f=FNCercaAggr(TS,FALSE),*c,*c2;
-				c=c2=C;
-				while(c->friends) {
+				struct TAGS *f=FNCercaAggr(TS,FALSE),*c;
+				c=C;
+				while(c->friends && c->friends->next)
 					c=c->next;
-					if(c)
-						c2=c;
+				if(!f)
+					f=subAllocTag(TS,2);			// FINIRE! con inizializzazioni, e ev altre cose 
+				c->friends=f;
+				PROCCheck(';');
+				goto riga_fatta;
+				}
+			else if(!_tcscmp(TS,C->label)) {		
+				FNLA(MyBuf);
+				if(*MyBuf=='(') {		// costruttore
+  				is_ctor=TRUE;
+					FIn->RestorePosition(OT);
+					if(classe>CLASSE_MEMBER)
+						PROCError(2723,TS,TS);		// boh dice che questo no ma il distruttore sì, trovare codice
 					}
-				if(f) {
-					c2=f;
+				else if(*MyBuf==':' && MyBuf[1]==':') {		// costruttore
+					FNLO(MyBuf);
+					FNLA(MyBuf);
+					OT=FIn->GetPosition();
 					}
 				else {
-					c2=subAllocTag(TS,2);			// FINIRE! con inizializzazioni, e ev altre cose 
-					c2->func;
+					struct TAGS *t;
+					if(t=FNCercaAggr(TS,FALSE)) {
+//						FIn->RestorePosition(OT);
+//						continue;
+						}
 					}
-				}
-			else if(!_tcscmp(TS,C->label)) {		// costruttore
-  			is_ctor=TRUE;
-				FIn->RestorePosition(OT);
 				}
 			else if(!_tcscmp(TS,"~")) {		// distruttore
   			is_dtor=TRUE;
@@ -1251,11 +1356,20 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 				FNLO(TS);
 				if(_tcscmp(TS,C->label))
 					PROCError(2523,TS);
+				if(classe==CLASSE_MEMBER_STATIC)
+					PROCError(2723,TS,TS);
 				FIn->RestorePosition(OT);
 				}
 			else if(FNIsType(TS) == -1) {
-				PROCError(2146,TS);
-				break; //continue;		
+				struct TAGS *t;
+				if(t=FNCercaAggr(TS,FALSE)) {
+					if(t==C)
+						PROCError(2460,FNLA(MyBuf)  ,C->label);
+					}
+				else {
+					PROCError(2146,"type",TS);
+					break; //continue;		
+					}
 				}
 
 			// UNIRE con la dichiarazione al livello esterno in IsDecl!
@@ -1266,7 +1380,12 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 				FNLO(TS);
 				}
 //			if(!is_ctor && !is_dtor)
+				s=INT_SIZE;
+				t=VARTYPE_PLAIN_INT;
+				ZeroMemory(dim,sizeof(dim));
+				tag=NULL;
 				f=PROCGetType(outbuf,&t,&s,&tag,dim,&attrib,OT);
+
 	//		else
 		//		FIn->RestorePosition(OT);
 
@@ -1305,7 +1424,7 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 				if(!_tcscmp(AS,"::")) {
 					FNLO(AS);
 					if(_tcscmp(TS,C->label))
-						PROCError(2039,AS);
+						PROCError(2653,AS);
 					OT=FIn->GetPosition();
 					FNLO(TS);
 					}
@@ -1325,10 +1444,26 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 				PROCCheck('(');
 				collectTypeList(mangle);
 				_tcscat(MyBuf,mangle);
-				V=FNCercaVar(MyBuf,FALSE,&inBase);		// perché in teoria DclVar fa il controllo se esiste già, ma non conosce ancora il mangling..
+
+				if(t & VARTYPE_FUNC_POINTER) {
+					V=FNCercaVar(C,TS,&inBase);		// 
+					// finire
+					}
+				else {
+//				V=FNCercaVar(MyBuf,FALSE,&inBase);		// perché in teoria DclVar fa il controllo se esiste già, ma non conosce ancora il mangling..
+					if(is_ctor || is_dtor)
+						V=FNCercaCtor(C,mangle,is_ctor,FALSE,&inBase);		// NO base
+					else
+						V=FNCercaFunz(C,TS,mangle,FALSE,&inBase);		// NO base
+					}
+
 //				__line__=ol;
-				if(V && V->type & VARTYPE_FUNC_BODY)
-					PROCError(2086,MyBuf);
+				if(V && V->type & VARTYPE_FUNC_BODY) {
+					if(is_operator)
+						PROCError(2556,MyBuf);		// andrebbe anche in altri casi, cmq qua direi ok
+					else
+						PROCError(2086,MyBuf);
+					}
 				else {
 
 				FNLO(TS);
@@ -1338,6 +1473,8 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 					Declaring=TRUE;
 
 					newVar=PROCDclVar(outbuf,classe,0,t,s,C,dim,attrib,FALSE,decor,mangle);
+					addMember(C,newVar);
+					newVar->hasTag=tag;		// hastag veniva impostato da DclVar... lì mi serve per sapere ev. base class (passare altro parm?
 
 		/*			// già fatto in DclVar!
 		
@@ -1387,6 +1524,8 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 //					V=PROCAllocVar(MyBuf,VARTYPE_FUNC/*TYPE_NULL*/,classe,0,SIZE_NULL,C,NULL);
 					FIn->RestorePosition(OT);
 					newVar=PROCDclVar(outbuf,classe,0,t,s,C,dim,attrib,FALSE,decor,mangle);
+					addMember(C,newVar);
+					newVar->hasTag=NULL;		// hastag veniva impostato da DclVar... lì mi serve per sapere ev. base class (passare altro parm?
 					if(/*!V no perché viene dichiarata in DclVar*/ !is_ctor && !is_dtor)
 						PROCOper(LINE_TYPE_FUNCTION_DECLARATION,funcType,newVar->name,outbuf,"qua qua",LINE_IS_NORMAL);
 					if(V)
@@ -1439,7 +1578,7 @@ struct TAGS *CPlusMinus::FNAllocAggr(int8_t type) {
 					FNLO(MyBuf);
 					i++;
 					}
-				t=i;
+				t |= i;
 				OT=FIn->GetPosition();
 
 				subGetType(&t, &s, dim, OT);
@@ -1454,18 +1593,16 @@ primogiro:
 //				FNLO(MyBuf);
 				if(classe==CLASSE_MEMBER_STATIC) {
 //					wsprintf(MyBuf,"%s_%s",C->label,AS);
-		      V=PROCAllocVar(AS/*MyBuf*/,t,classe,0,s,tag,dim); // non decoro qua, per cercare meglio
+		      V=PROCAllocVar(AS/*MyBuf*/,t,classe,0,s,tag,dim,CurrFunc); // non decoro qua, per cercare meglio
 					_tcscpy(V->label,AS);
 // in effetti no, solo quando viene dichiarata fuori , v.					PROCOper(LINE_TYPE_DATA,outbuf,MyBuf,NULL,NULL,LINE_IS_NORMAL);
 					}
 				else {
-		      V=PROCAllocVar(AS,t,classe,0,s,tag,dim);
+		      V=PROCAllocVar(AS,t,classe,0,s,tag,dim,CurrFunc);
 					_tcscpy(V->label,AS);
 					PROCOper(LINE_TYPE_DATA_DEF,"",outbuf,AS,NULL,LINE_IS_NORMAL);
 					}
-
-
-        V->isInTag=C;
+				addMember(C,V);
 
 				FNLA(MyBuf);
         if(*MyBuf == ':') {
@@ -1497,6 +1634,8 @@ primogiro:
           }
         FNLO(TS);
         } while((*TS != ';') && (*TS));
+
+riga_fatta:
       if(!*TS) {
 				Go=TRUE;
         PROCError(2054,";");
@@ -1511,13 +1650,11 @@ primogiro:
 
 fine_class:
 	if(type == 2) {
-		struct VARS *v=Var;
+		struct VARS *v=C->member;
 		i=0;
 		while(v) {		// cerco almeno un costruttore
-			if(v->isInTag==C) {
-				if(strstr(v->name,ctor)) { 
-					i=1;
-					}
+			if(strstr(v->name,ctor)) { 
+				i=1;
 				}
 			v=v->next;
 			}
@@ -1525,11 +1662,12 @@ fine_class:
 			_tcscpy(AS,C->label);
 			_tcscat(AS,ctor);
 			_tcscat(AS,to_mangle);
-			V=PROCAllocVar(AS,VARTYPE_FUNC | VARTYPE_FUNC_BODY/*TYPE_NULL*/,CLASSE_MEMBER,0,SIZE_NULL,C,NULL);
-			V->isInTag=C;
+			V=PROCAllocVar(AS,VARTYPE_FUNC | VARTYPE_FUNC_BODY/*TYPE_NULL*/,CLASSE_MEMBER,0,SIZE_NULL,NULL,NULL,CurrFunc);
+			addMember(C,V);
 			// e creare funzione vuota!
 			_tcscpy(TS,C->label);
-			_tcscat(TS," *this");
+			_tcscat(TS," *");
+			_tcscat(TS,the_this);
 			PROCOper(LINE_TYPE_FUNCTION,NULL,AS,TS, NULL,LINE_IS_NORMAL);
 //			PROCOper(LINE_TYPE_ISTRUZIONE,AS,"() {\n\t}",NULL,NULL,LINE_IS_NORMAL);
 			PROCOper(LINE_TYPE_FUNCTION_DECLARATION,NULL,AS,TS, NULL,LINE_IS_NORMAL);
@@ -1537,7 +1675,7 @@ fine_class:
 				_tcscpy(AS,C->parent->label);
 				_tcscat(AS,ctor);
 				_tcscat(AS,to_mangle);
-				wsprintf(TS,"(struct %s*)&this->%s",C->parent->label,ptr_to_base2);
+				wsprintf(TS,"(struct %s*)&%s->%s",C->parent->label,the_this,ptr_to_base2);
 				InBlock++;		// per formattazione!
 				PROCOper(LINE_TYPE_CALL,AS,TS,NULL,"chiamo padre",LINE_IS_NORMAL);
 
@@ -1546,7 +1684,7 @@ fine_class:
 				}
 			InBlock++;		// per formattazione!
 			if(FNHasVirtual(C)) {
-				wsprintf(TS,"this->%s = &__vftable_%s",vptr,C->label);				// Assegna vtable di Shape
+				wsprintf(TS,"%s->%s = &__vftable_%s",the_this,vptr,C->label);				// Assegna vtable di Shape
 				PROCOper(LINE_TYPE_ISTRUZIONE,TS,NULL,NULL,"x virtual",LINE_IS_NORMAL);
 				}
 		  PROCOper(LINE_TYPE_ISTRUZIONE_CONT,"}\n");
@@ -1554,12 +1692,10 @@ fine_class:
 			}
 
 		i=0;
-		v=Var;
+		v=C->member;
 		while(v) {		// cerco almeno un distruttore
-			if(v->isInTag==C) {
-				if(strstr(v->name,dtor)) { 
-					i=1;
-					}
+			if(strstr(v->name,dtor)) { 
+				i=1;
 				}
 			v=v->next;
 			}
@@ -1567,18 +1703,19 @@ fine_class:
 			_tcscpy(AS,C->label);		// il distruttore invece sempre, dice
 			_tcscat(AS,dtor);
 			_tcscat(AS,to_mangle);
-			V=PROCAllocVar(AS,VARTYPE_FUNC | VARTYPE_FUNC_BODY/*TYPE_NULL*/,CLASSE_MEMBER,0,SIZE_NULL,C,NULL);
-			V->isInTag=C;
+			V=PROCAllocVar(AS,VARTYPE_FUNC | VARTYPE_FUNC_BODY/*TYPE_NULL*/,CLASSE_MEMBER,0,SIZE_NULL,NULL,NULL,CurrFunc);
+			addMember(C,V);
 			// e creare funzione vuota!
 			_tcscpy(TS,C->label);
-			_tcscat(TS," *this");
+			_tcscat(TS," *");
+			_tcscat(TS,the_this);
 			PROCOper(LINE_TYPE_FUNCTION,NULL,AS,TS, NULL,LINE_IS_NORMAL);
 			PROCOper(LINE_TYPE_FUNCTION_DECLARATION,NULL,AS,TS, NULL,LINE_IS_NORMAL);
 			if(C->parent) {		// (inserire dtor base
 				_tcscpy(AS,C->parent->label);
 				_tcscat(AS,dtor);
 				_tcscat(AS,to_mangle);
-				wsprintf(TS,"(struct %s*)&this->%s",C->parent->label,ptr_to_base2);
+				wsprintf(TS,"(struct %s*)&%s->%s",C->parent->label,the_this,ptr_to_base2);
 				InBlock++;		// per formattazione!
 				PROCOper(LINE_TYPE_CALL,AS,TS,NULL,"chiamo padre",LINE_IS_NORMAL);
 				InBlock--;
@@ -1591,59 +1728,51 @@ fine_class:
 		if(C->parent) {		// 
 			struct VARS *v2;
 			i=0;
-			v=Var;
+			v=C->parent->member;
 			while(v) {		// costruisco ev. tabella virtual ereditando e sostituendo - analizzo il padre e i suoi virtual
-				if(v->isInTag==C->parent) {
-					if(v->classe==CLASSE_MEMBER_VIRTUAL) {
+				if(v->classe==CLASSE_MEMBER_VIRTUAL) {
+					if(!i) {
+						i=1;
+						wsprintf(TS,"const struct %s_VTable __vftable_%s = {",C->label,C->label);
+						PROCOper(LINE_TYPE_CONST_DEF,TS,NULL,NULL,NULL);		// 
+						}
+					f=0;
+					v2=C->member;
+					while(v2) {
+						if(!_tcscmp(v->name+_tcslen(C->parent->label),v2->name+_tcslen(C->label))) {		// se i nomi dei membri sono uguali...
+							if(v2->classe == CLASSE_MEMBER_STATIC)		// l'attributo "virtual" si auto-eredità dal primo padre in poi! e se c'è un conflitto diamo errore
+								PROCError(2574,v2->name);
+							PROCOper(LINE_TYPE_CONST_DEF,"",v2->name,",",NULL);		// ..prendo quella "nuova"
+							v2->classe=CLASSE_MEMBER_VIRTUAL;		// quindi forzo attr. ereditato
+							f=1;
+							break;
+							}
+						v2=v2->next;
+						}
+					if(!f)
+						PROCOper(LINE_TYPE_CONST_DEF,"",v->name,",",NULL);		// altrimenti, quella della base
+					}
+				v=v->next;
+				}
+			v=C->member;
+			while(v) {		// ...ora analizzo questa, e accodo le cose che non c'erano
+				if(v->classe==CLASSE_MEMBER_VIRTUAL) {
+					f=0;
+					v2=C->parent->member;
+					while(v2) {
+						if(!_tcscmp(v->name+_tcslen(C->parent->label),v2->name+_tcslen(C->label))) {		// se i nomi dei membri sono uguali...
+							f=1;
+							break;
+							}
+						v2=v2->next;
+						}
+					if(!f) {		// se non c'era, la metto!
 						if(!i) {
 							i=1;
 							wsprintf(TS,"const struct %s_VTable __vftable_%s = {",C->label,C->label);
 							PROCOper(LINE_TYPE_CONST_DEF,TS,NULL,NULL,NULL);		// 
 							}
-						f=0;
-						v2=Var;
-						while(v2) {
-							if(v2->isInTag==C) {
-								if(!_tcscmp(v->name+_tcslen(C->parent->label),v2->name+_tcslen(C->label))) {		// se i nomi dei membri sono uguali...
-									if(v2->classe == CLASSE_MEMBER_STATIC)		// l'attributo "virtual" si auto-eredità dal primo padre in poi! e se c'è un conflitto diamo errore
-										PROCError(2574,v2->name);
-									PROCOper(LINE_TYPE_CONST_DEF,"",v2->name,",",NULL);		// ..prendo quella "nuova"
-									v2->classe=CLASSE_MEMBER_VIRTUAL;		// quindi forzo attr. ereditato
-									f=1;
-									break;
-									}
-								}
-							v2=v2->next;
-							}
-						if(!f)
-							PROCOper(LINE_TYPE_CONST_DEF,"",v->name,",",NULL);		// altrimenti, quella della base
-						}
-					}
-				v=v->next;
-				}
-			v=Var;
-			while(v) {		// ...ora analizzo questa, e accodo le cose che non c'erano
-				if(v->isInTag==C) {
-					if(v->classe==CLASSE_MEMBER_VIRTUAL) {
-						f=0;
-						v2=Var;
-						while(v2) {
-							if(v2->isInTag==C->parent) {
-								if(!_tcscmp(v->name+_tcslen(C->parent->label),v2->name+_tcslen(C->label))) {		// se i nomi dei membri sono uguali...
-									f=1;
-									break;
-									}
-								}
-							v2=v2->next;
-							}
-						if(!f) {		// se non c'era, la metto!
-							if(!i) {
-								i=1;
-								wsprintf(TS,"const struct %s_VTable __vftable_%s = {",C->label,C->label);
-								PROCOper(LINE_TYPE_CONST_DEF,TS,NULL,NULL,NULL);		// 
-								}
-							PROCOper(LINE_TYPE_CONST_DEF,"",v->name,",",NULL);		// ..la prendo 
-							}
+						PROCOper(LINE_TYPE_CONST_DEF,"",v->name,",",NULL);		// ..la prendo 
 						}
 					}
 				v=v->next;
@@ -1652,18 +1781,16 @@ fine_class:
 				PROCOper(LINE_TYPE_CONST_DEF,"\t};\n",NULL,NULL,NULL);		// 
 			}
 		else {
-			v=Var;
+			v=C->member;
 			i=0;
 			while(v) {		// costruisco ev. tabella virtual
-				if(v->isInTag==C) {
-					if(v->classe==CLASSE_MEMBER_VIRTUAL) {
-						if(!i) {
-							i=1;
-							wsprintf(TS,"const struct %s_VTable __vftable_%s = {",C->label,C->label);
-							PROCOper(LINE_TYPE_CONST_DEF,TS,NULL,NULL,NULL);		// 
-							}
-						PROCOper(LINE_TYPE_CONST_DEF,"",v->name,",",NULL);		// 
+				if(v->classe==CLASSE_MEMBER_VIRTUAL) {
+					if(!i) {
+						i=1;
+						wsprintf(TS,"const struct %s_VTable __vftable_%s = {",C->label,C->label);
+						PROCOper(LINE_TYPE_CONST_DEF,TS,NULL,NULL,NULL);		// 
 						}
+					PROCOper(LINE_TYPE_CONST_DEF,"",v->name,",",NULL);		// 
 					}
 				v=v->next;
 				}
@@ -1673,8 +1800,54 @@ fine_class:
 
 		}
 
+fine_class_noctors:
   return C;
   }
+
+struct TAGS *CPlusMinus::PROCDeleteAggr(struct TAGS **root,struct TAGS **last,struct TAGS *c) {
+
+	if(!c || !root || !last) 
+		return NULL;
+
+  if(c->prev)
+    c->prev->next = c->next;
+	else
+    *root = c->next;
+  
+  if(c->next)
+    c->next->prev = c->prev;
+  else
+    *last = c->prev;
+
+  if(!*root)
+    *last = NULL;
+
+	if(c->member) {
+		struct VARS *v;
+		while(c->member) {
+			v=c->member->next;
+			GlobalFree(c->member);
+			c->member=v;
+			}
+		}
+	if(c->friends) {
+		struct TAGS *t;
+		while(c->friends) {
+			t=c->friends->next;
+	//		if(!c->member)			// fare SOLO se NON è definita (altrimenti si cancellerà da sola... o forse cmq?!
+//									if(FNHasVar(c))	{		// 
+
+//				GlobalFree(c->friends);
+
+			c->friends=t;
+			}
+		}
+
+  GlobalFree(c);
+
+  return *root;
+	}
+
 
 int CPlusMinus::StoreVar(char *outbuf,const char *op,struct VARS *V, int8_t RQ, struct VARS *RVar, union STR_LONG *RCost, uint16_t ofs) {
   O_SIZE S;
@@ -1690,14 +1863,16 @@ int CPlusMinus::StoreVar(char *outbuf,const char *op,struct VARS *V, int8_t RQ, 
 	if(V->classe>=CLASSE_MEMBER) {
 		if(V->type & VARTYPE_REFERENCE) {		// qua? boh
 			_tcscpy(outbuf,"(*");
-			_tcscpy(outbuf,"this->");
+			_tcscat(outbuf,the_this);
+			_tcscat(outbuf,"->");
 			if(V->hasBase)	
 				_tcscat(outbuf,ptr_to_base);
 			_tcscat(outbuf,V->name);
 			_tcscat(outbuf,")");
 			}
 		else {
-			_tcscpy(outbuf,"this->");
+			_tcscpy(outbuf,the_this);
+			_tcscat(outbuf,"->");
 			if(V->hasBase)	
 				_tcscat(outbuf,ptr_to_base);
 			_tcscat(outbuf,V->name);
@@ -1718,14 +1893,17 @@ int CPlusMinus::StoreVar(char *outbuf,const char *op,struct VARS *V, int8_t RQ, 
 	if(RQ==VALUE_IS_VARIABILE &&  RVar) {
 		if(RVar->classe>=CLASSE_MEMBER) {
 			if(RVar->type & VARTYPE_REFERENCE) {
-				_tcscpy(outbuf,"(*(this->");
+				_tcscat(outbuf,"(*(");
+				_tcscat(outbuf,the_this);
+				_tcscat(outbuf,"->");
 				if(RVar->hasBase)	
 					_tcscat(outbuf,ptr_to_base);
 				_tcscat(outbuf,RVar->name);
 				_tcscat(outbuf,"))");
 				}
 			else {
-				_tcscat(outbuf,"this->");
+				_tcscat(outbuf,the_this);
+				_tcscat(outbuf,"->");
 				if(RVar->hasBase)	
 					_tcscat(outbuf,ptr_to_base);
 				_tcscat(outbuf,RVar->name);
@@ -1733,7 +1911,7 @@ int CPlusMinus::StoreVar(char *outbuf,const char *op,struct VARS *V, int8_t RQ, 
 			}
 		else {
 			if(RVar->type & VARTYPE_REFERENCE) {
-				_tcscpy(outbuf,"(*");
+				_tcscat(outbuf,"(*");
 				_tcscat(outbuf,RVar->name);
 				_tcscat(outbuf,")");
 				}
@@ -1840,7 +2018,8 @@ int CPlusMinus::ReadVar(char *outbuf,struct VARS *V,O_TYPE T,O_SIZE S,uint8_t is
   s1=__min(s,s1);
 
 	if(V->classe>=CLASSE_MEMBER) {
-		_tcscat(outbuf,"this->");
+		_tcscat(outbuf,the_this);
+		_tcscat(outbuf,"->");
 		if(V->hasBase)
 			_tcscat(outbuf,ptr_to_base);
 		_tcscat(outbuf,V->name);

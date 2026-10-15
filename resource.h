@@ -116,6 +116,7 @@
 #define ID_MODIFICA_ELIMINATUTTIISEGNALIBRI 32841
 #define ID_EDIT_REPEAT_BACK             32842
 #define ID_EDIT_FIND_COMBO              32843
+#define ID_FINESTRA_CHIUDI              32844
 #define IDS_COORDINATE                  61447
 #define IDS_FILEAPERTI                  61448
 #define IDS_NOMECC                      61449
@@ -139,7 +140,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        156
-#define _APS_NEXT_COMMAND_VALUE         32844
+#define _APS_NEXT_COMMAND_VALUE         32845
 #define _APS_NEXT_CONTROL_VALUE         1025
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

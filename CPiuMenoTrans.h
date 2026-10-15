@@ -1,18 +1,10 @@
-//#define I8086 0
-//#define Z80   1
-//#define ARCHI 0
-//#define I8051 0
-//#define MICROCHIP 1
-// MESSE IN PROGETTO!!
 
 #define WM_ADDTEXT (WM_USER+1)		// v.openC
 #define WM_CLSWINDOW (WM_USER+2)
+#define WM_COMPILEDONE (WM_USER+3)
 
 #include <stdint.h>
        
-#define ANSI  TRUE
-#define ACORN FALSE
-#define GD    FALSE   // REM CONVENZIONI SUI NOMIFILE
 
 //#define TRUE 1
 //#define FALSE 0
@@ -21,7 +13,7 @@
 #define STACK_ITEM_SIZE 4
 #define PTR_SIZE INT_SIZE
 
-#define __VER__ MAKEWORD(0,1)
+#define __VER__ MAKEWORD(1,1)
 
 enum {
 	PWM_COMMWRITE =  WM_USER+1,
@@ -131,7 +123,7 @@ enum VAR_CLASSES {			// v. anche class CPlusMinus
 	CLASSE_STATIC=2,
 	CLASSE_AUTO=3,
 	CLASSE_REGISTER=4,
-	CLASSE_MEMBER=5,		// per membri di una classe
+	CLASSE_MEMBER=5,		// per membri di una classe/struct/union
   CLASSE_MEMBER_STATIC = 6, // static di classe (niente 'this')
   CLASSE_MEMBER_VIRTUAL = 7, // virtual di classe (usa vtable)
 
@@ -202,7 +194,7 @@ enum VAR_VISIBILITY {
 	VIS_PRIVATE,
 	};
 struct VARS {
-  char label[128];		// qua mettiamo il nome "puro"
+  char label[128];		// qua mettiamo il nome "puro" oppure ofs e dim se bitfield
   char name[MAX_NAME_LEN+1];		//il nome mangled
   enum VAR_CLASSES classe;
 	enum VAR_VISIBILITY visibility;
@@ -213,10 +205,7 @@ struct VARS {
   O_SIZE size;
   uint8_t block;
 	short int blockId;
-  union {
-	  struct VARS *func;
-		int32_t value;
-		} func;
+	int32_t value;
   union {
 		char *ptr;
 		int *ptr32;
@@ -233,6 +222,7 @@ struct VARS {
   uint8_t attrib;
 	uint8_t inlineCnt;
 	struct LINE *definition;		// dove è definita (usato da funzioni inlined)
+  struct VARS *parent;		// la funzione a cui appartiene
   struct VARS *members;		// var locali di una funzione
   struct VARS *prev;
   struct VARS *next;
@@ -260,8 +250,10 @@ struct TAGS {
   struct VARS *func;
   uint8_t block;
 	short int blockId;
+	uint16_t size;		// calcolata al momento della definizione
 	struct TAGS *parent;		// per ereditarietà
 	struct TAGS *friends;		// in effetti dice che possono esserci anche funzioni singole o altro
+  struct TAGS *prev;		// usare!
   struct TAGS *next;
   };  
    
@@ -309,6 +301,8 @@ struct BLOCK_PTR {
 	int8_t flag;		// usato per segnalare cose, tipo "default" già uscito in switch(
   };
    
+#define MAKEPTROFS(s) (*(uint32_t*)s)
+#define MAKEPTRBITF(s) (*(uint8_t*)(s+4))
 
 
 class CPiuMenoDoc;
@@ -548,11 +542,13 @@ public:
 	struct VARS *FNCercaVar(const char *, bool,struct TAGS **base=NULL);
 	struct VARS *FNCercaVar(struct TAGS *,const char *,struct TAGS **base=NULL);
 	struct TAGS *FNCercaAggr(const char *, bool);
-	struct VARS *FNCercaFunz(struct TAGS *,const char *,const char *,struct TAGS **base=NULL);
-	struct VARS *FNCercaCtor(struct TAGS *,const char *,bool is_ctor,struct TAGS **base=NULL);
+	struct VARS *FNCercaFunz(struct TAGS *,const char *,const char *,bool bBase,struct TAGS **base);
+	struct VARS *FNCercaCtor(struct TAGS *,const char *,bool is_ctor,bool bBase,struct TAGS **base);
 	bool FNHasVar(struct TAGS *);			// ossia "se è definita"
 	bool FNHasVirtual(struct TAGS *);			// ossia "se ha almeno una funzione virtual"
-	struct VARS *PROCAllocVar(const char *name, O_TYPE type, enum VAR_CLASSES, uint8_t modif, O_SIZE size, struct TAGS *, O_DIM dim);
+	struct VARS *PROCAllocVar(const char *name, O_TYPE type, enum VAR_CLASSES, uint8_t modif, O_SIZE size, 
+		struct TAGS *tag, O_DIM dim, struct VARS *func);
+	struct VARS *PROCDeleteVar(struct VARS **,struct VARS **,struct VARS *);
 	struct VARS *PROCAllocFunzProto(const char *name, O_TYPE type, O_SIZE size);
 	struct VARS *PROCAllocGoto(const char *label);
 	struct VARS *FNCercaGoto(const char *);
@@ -606,7 +602,7 @@ public:
   int PROCV(const char *);
 	int PROCT();
 	int PROCD();
-	int PROCVarList(COutputFile *, struct VARS *, struct VARS *v=NULL);
+	int PROCVarList(COutputFile *, struct VARS *);
 
 	char *FNLO(char *);
 	char *FNLA(char *);
@@ -645,9 +641,11 @@ public:
 	long FNIsType(char *);
 	struct VARS *FNGetAggr(struct TAGS *, const char *, int8_t, int *);
 	struct VARS *FNGetAggr(struct TAGS *, int8_t);
-	uint32_t FNGetAggr2(struct VARS *, struct VARS *, int *, int *ofs=NULL);
+	uint32_t FNGetAggr2(struct VARS *, int *, int *ofs=NULL);
 	struct TAGS *subAllocTag(const char *,int8_t);
+	void addMember(struct TAGS *, struct VARS *);
 	struct TAGS *FNAllocAggr(int8_t);
+	struct TAGS *PROCDeleteAggr(struct TAGS **,struct TAGS **,struct TAGS *);
 	int StoreVar(char *outbuf,const char *op,struct VARS *Vvar,int8_t VQ, struct VARS *RVar, union STR_LONG *, uint16_t ofs);
 	int ReadVar(char *outbuf,struct VARS *,O_TYPE type,O_SIZE size,uint8_t/*bool*/ isCond,bool asPtr);
 
@@ -669,6 +667,9 @@ public:
 	struct BLOCK_PTR OldTX[MAX_BLOCCHI];
 
 // Implementation
+
+	friend class Point;
+
 	};
 
 
